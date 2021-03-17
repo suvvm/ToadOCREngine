@@ -1,7 +1,5 @@
 # info
 
-RUN_NAME="toad_ocr_engine"
-
 # help: Help for this project
 help: Makefile
 	@echo "Usage:\n  make [command]"
@@ -14,9 +12,8 @@ build:
 	@sh build.sh
 
 ## run: Build and run
-run:
-	$(MAKE) build
-	./output/bin/$(RUN_NAME)
+run: build
+	@sh output/bootstrap.sh
 
 ## clean: Clean output
 clean:
