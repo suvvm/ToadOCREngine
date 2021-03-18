@@ -97,3 +97,21 @@ func ReadImageFile(reader io.Reader) ([]RawImage, error) {
 	}
 	return images, nil
 }
+
+
+// PixelWeight 像素灰度缩放
+// mnist给出的图像作为灰度图，单个像素点通过8位的灰度值(0~255)来表示。
+// PixelWeight 函数将字节类型的像素灰度值转换为float64类型，并将范围缩放至(0.0~1.0)
+//
+// 入参
+//	px byte	// 字节型像素灰度值
+//
+// 返回
+//	float64 // 缩放后的浮点灰度值
+func PixelWeight(px byte) float64 {
+	pixelVal := (float64(px) / pixelRange * 0.999) + 0.001
+	if pixelVal == 1.0 {
+		return 0.999
+	}
+	return pixelVal
+}
