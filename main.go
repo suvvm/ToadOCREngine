@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"suvvm.work/toad_ocr_engine/method"
 	"suvvm.work/toad_ocr_engine/utils"
 )
 
@@ -25,8 +26,8 @@ func main() {
 	}
 	log.Printf("number of imgs:%d, number of labs:%d", len(images), len(labels))
 
-	data := utils.PrepareX(images)
-	if err = utils.Visualize(data, 10, 10, "image.png"); err != nil {
+	data := method.PrepareX(images)
+	if err = method.Visualize(data, 10, 10, "image.png"); err != nil {
 		log.Fatalf("visualize error:%v", err)
 	}
 }

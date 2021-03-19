@@ -10,5 +10,5 @@ require (
 	github.com/leesper/go_rng v0.0.0-20190531154944-a612b043e353 // indirect
 	gonum.org/v1/gonum v0.9.0 // indirect
 	gorgonia.org/gorgonia v0.9.17 // indirect
-	gorgonia.org/tensor v0.9.19 // indirect
+	gorgonia.org/tensor v0.9.19
 )
