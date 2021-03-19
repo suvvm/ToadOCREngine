@@ -3,8 +3,12 @@ package utils
 import (
 	"encoding/binary"
 	"gorgonia.org/tensor"
+	"image"
+	"image/color"
+	"image/png"
 	"io"
 	"os"
+	"suvvm.work/toad_ocr_engine/model"
 )
 
 type RawImage []byte	// 原始图像
@@ -12,6 +16,8 @@ type Label uint8		// mnist 数字标签 范围0～9
 
 const numLabels = 10	// 数字标签个数
 const pixelRange = 255	// 像素强度范围
+const rawImageRows = 28	// 原始图像高度28像素
+const rawImageCols = 28	// 原始图像宽度28像素
 
 const (
 	imageMagic = 0x00000803	// 图像文件幻数
@@ -173,4 +179,64 @@ func PrepareY(labels []Label) tensor.Tensor {
 	}
 	// 返回rows * cols的tensor矩阵
 	return tensor.New(tensor.WithShape(rows, cols), tensor.WithBacking(supportSlice))
+}
+
+// Visualize 图像可视化实现函数
+// 给定行数和列数，在float64张量data中获取图像，对像素灰度反向放大，
+// 最终拼接为一个包含rows * cols个原始图像，文件名为filename的png图像
+//
+// 入参
+//	data tensor.Tensor	// 保存所有图像float64数据的张量
+//	rows int			// 目标图像每行所包含原始图像的数量
+//	cols int			// 目标图像每列所包含原始图像的数量
+//	filename string		// 目标图像文件名
+//
+// 返回
+// error				// 错误信息
+func Visualize(data tensor.Tensor, rows, cols int, filename string) error {
+	imageTotal := rows * cols	// 计算图像包含原始图像总数
+	sliced := data
+	var err error
+	if imageTotal > 1 {
+		sliced, err = data.Slice(model.MakeRS(0, imageTotal), nil)	// 对data张量切片
+		if err != nil {
+			return err
+		}
+	}
+	// 将分割后的张量重新构造为一个四维切片，可以认为这是一个rows * cols的，
+	// 由rawImageRows * rawImageCols的原始图像组成的行和列
+	if err = sliced.Reshape(rows, cols, rawImageRows, rawImageCols); err != nil {
+		return err
+	}
+	imRows := rawImageRows * rows
+	imCols := rawImageCols * cols
+	rect := image.Rect(0, 0, imCols, imRows)	// 构造对应大小的矩形图像
+	canvas := image.NewGray(rect)	// 根据构造的矩形创建灰度图画布
+	// 遍历图像才张量中提取像素灰度值进行填充
+	for i := 0; i < cols; i++ {
+		for j := 0; j < rows; j++ {
+			var patch tensor.Tensor
+			if patch, err = sliced.Slice(model.MakeRS(i, i + 1), model.MakeRS(j, j + 1)); err != nil {
+				return err
+			}
+			patchData := patch.Data().([]float64)
+			for k, px := range patchData {
+				x := j * rawImageRows + k % rawImageRows
+				y := i * rawImageCols + k / rawImageCols
+				c := color.Gray{ReversePixelWeight(px)}
+				canvas.Set(x, y, c)
+			}
+		}
+	}
+	var file io.WriteCloser
+	if file, err = os.Create("output/"+filename); err != nil {
+		return err
+	}
+	if err = png.Encode(file, canvas); err != nil {
+		return err
+	}
+	if err = file.Close(); err != nil {
+		return err
+	}
+	return nil
 }
