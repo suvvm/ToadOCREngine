@@ -133,6 +133,7 @@ func Visualize(data tensor.Tensor, rows, cols int, filename string) error {
 			}
 		}
 	}
+	// 构造png图像文件
 	var file io.WriteCloser
 	if file, err = os.Create("output/images/"+filename); err != nil {
 		return err
