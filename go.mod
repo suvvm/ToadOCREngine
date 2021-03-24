@@ -11,4 +11,5 @@ require (
 	gonum.org/v1/gonum v0.9.0 // indirect
 	gorgonia.org/gorgonia v0.9.17 // indirect
 	gorgonia.org/tensor v0.9.19
+	gorgonia.org/vecf64 v0.9.0
 )

@@ -30,4 +30,11 @@ func main() {
 	if err = method.Visualize(data, 10, 10, "image.png"); err != nil {
 		log.Fatalf("visualize error:%v", err)
 	}
+	dataZCA, err := utils.ZCA(data)
+	if err != nil {
+		log.Fatalf("err:%v", err)
+	}
+	if err = method.Visualize(dataZCA, 10, 10, "imageZCA.png"); err != nil {
+		log.Fatalf("visualize error:%v", err)
+	}
 }
