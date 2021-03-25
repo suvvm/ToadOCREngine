@@ -154,6 +154,30 @@ func FillRandom(data []float64, val float64) {
 	}
 }
 
+// Sigmoid （Logistic）神经网络激活函数
+// 用于隐层神经元输出，将给定float64实数映射到(0,1)
+// 定义公式 $ S(x) = \frac{1}{1 + e^{-x}} $
+//
+// 入参
+//	x float64	// 给定float64实数
+//
+// 返回
+//	float64		// 映射结果
+func Sigmoid(x float64) float64 {
+	return 1 / (1 + math.Exp(-1 * x))
+}
+
+// DSigmoid Sigmoid的导数
+//
+// 入参
+//	x float64	// 给定float64实数
+//
+// 返回
+//	float64		// 运算结果
+func DSigmoid(x float64) float64 {
+	return (1 - x) * x
+}
+
 //64位平方根倒数速算法1.卡马克反转。基础是牛顿迭代法。
 func sqrtRootFloat64(number float64) float64 {
 	var i uint64
