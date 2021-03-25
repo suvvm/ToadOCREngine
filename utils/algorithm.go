@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"gonum.org/v1/gonum/stat/distuv"
 	"gorgonia.org/tensor"
 	"gorgonia.org/tensor/native"
 	"gorgonia.org/vecf64"
@@ -137,6 +138,21 @@ func ZCA(data tensor.Tensor) (tensor.Tensor, error) {
 	return tensor.MatMul(data, tmp)
 }
 
+// FillRandom 随机填充[]float64
+// 使用连续均匀分布中的随机值填充[]float64
+//
+// 入参
+//	data []float64	// 要填充的目标数组
+//	val float64		// 随机值分布限制
+func FillRandom(data []float64, val float64) {
+	dist := distuv.Uniform{
+		Min: -1 / math.Sqrt(val),
+		Max: 1 / math.Sqrt(val),
+	}
+	for i := range data {	// 在分布范围内抽取随机数填充目标数组
+		data[i] = dist.Rand()
+	}
+}
 
 //64位平方根倒数速算法1.卡马克反转。基础是牛顿迭代法。
 func sqrtRootFloat64(number float64) float64 {
