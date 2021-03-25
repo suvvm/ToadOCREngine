@@ -48,7 +48,7 @@ func (m *Maybe) Sigmoid(data tensor.Tensor) tensor.Tensor {
 	}
 	var retVal tensor.Tensor
 	// 对张量中所有数据执行激活函数，结果数据写入retVal 原data不做改变
-	if retVal, m.err = data.Apply(utils.Sigmoid); m.err == nil {
+	if retVal, m.err = data.Apply(utils.Sigmoid, tensor.UseUnsafe()); m.err == nil {
 		return retVal
 	}
 	// 跟踪错误信息

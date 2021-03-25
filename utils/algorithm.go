@@ -178,6 +178,26 @@ func DSigmoid(x float64) float64 {
 	return (1 - x) * x
 }
 
+// Argmax 计算给定数据切片中最大值的索引
+//
+// 入参
+//	data []float64	// 给定数据切片
+//
+// 返回
+//	int				// 最大值的索引
+// Deprecated: 不如用vecf64.Argmax
+func Argmax(data []float64) int {
+	var index int
+	var max = math.Inf(-1)
+	for i := range data {
+		if data[i] > max {
+			index = i
+			max = data[i]
+		}
+	}
+	return index
+}
+
 //64位平方根倒数速算法1.卡马克反转。基础是牛顿迭代法。
 func sqrtRootFloat64(number float64) float64 {
 	var i uint64
