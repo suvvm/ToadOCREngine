@@ -23,7 +23,7 @@ func NewSNN(input, hidden, output int) *model.SNN {
 	utils.FillRandom(finalData, float64(len(finalData)))
 	// 创建张量
 	hiddenT := tensor.New(tensor.WithShape(hidden, input), tensor.WithBacking(hiddenData))
-	finalT := tensor.New(tensor.WithShape(hidden, input), tensor.WithBacking(finalData))
+	finalT := tensor.New(tensor.WithShape(output, hidden), tensor.WithBacking(finalData))
 	// 返回新的基础神经网络
 	return &model.SNN{
 		Hidden: hiddenT,

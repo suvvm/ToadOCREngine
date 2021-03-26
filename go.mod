@@ -8,7 +8,8 @@ require (
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/protobuf v1.5.1 // indirect
 	github.com/leesper/go_rng v0.0.0-20190531154944-a612b043e353 // indirect
-	gonum.org/v1/gonum v0.9.0 // indirect
+	github.com/pkg/errors v0.9.1
+	gonum.org/v1/gonum v0.9.0
 	gorgonia.org/gorgonia v0.9.17 // indirect
 	gorgonia.org/tensor v0.9.19
 	gorgonia.org/vecf64 v0.9.0

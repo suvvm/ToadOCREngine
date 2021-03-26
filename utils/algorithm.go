@@ -6,6 +6,8 @@ import (
 	"gorgonia.org/tensor/native"
 	"gorgonia.org/vecf64"
 	"math"
+	"math/rand"
+	"time"
 )
 
 // InverseSqrt 64位平方根倒数算法
@@ -70,7 +72,7 @@ func Centralization(data tensor.Tensor) error {
 	center := make([]float64, cols)	// 每一列的中心点
 	for i := 0; i < cols; i++ {	// 计算每一列的中心点
 		var colCenter float64
-		for j :=0; j < rows; j++ {
+		for j := 0; j < rows; j++ {
 			colCenter += nat[j][i]
 		}
 		colCenter /= float64(rows)
@@ -104,7 +106,7 @@ func ZCA(data tensor.Tensor) (tensor.Tensor, error) {
 	if dataTranspose, err =  tensor.T(dataClone); err != nil {	// 求得中心化完成后的矩阵的转置
 		return nil, err
 	}
-	if sigma, err = tensor.MatMul(dataTranspose, data); err != nil {	// 求矩阵Σ
+	if sigma, err = tensor.MatMul(dataTranspose, dataClone); err != nil {	// 求矩阵Σ
 		return nil, err
 	}
 	cols := sigma.Shape()[1]	// 获取矩阵Σ列数
@@ -211,6 +213,21 @@ func sqrtRootFloat64(number float64) float64 {
 	y = y * (f - (x * y * y))
 	y = y * (f - (x * y * y))
 	return number * y
+}
+
+// ShuffleX 随机排列函数
+//
+// 入参
+//	data [][]float64	// 要随机排列的float64切片
+func ShuffleX(data [][]float64) {
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	tmp := make([]float64, len(data[0]))
+	for i := range data {
+		j := r.Intn(i + 1)
+		copy(tmp, data[i])
+		copy(data[i], data[j])
+		copy(data[j], tmp)
+	}
 }
 
 //64位平方根倒数速算法2
