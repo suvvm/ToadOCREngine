@@ -1,10 +1,13 @@
 package utils
 
 import (
+	"gonum.org/v1/gonum/stat/distuv"
 	"gorgonia.org/tensor"
 	"gorgonia.org/tensor/native"
 	"gorgonia.org/vecf64"
 	"math"
+	"math/rand"
+	"time"
 )
 
 // InverseSqrt 64位平方根倒数算法
@@ -69,7 +72,7 @@ func Centralization(data tensor.Tensor) error {
 	center := make([]float64, cols)	// 每一列的中心点
 	for i := 0; i < cols; i++ {	// 计算每一列的中心点
 		var colCenter float64
-		for j :=0; j < rows; j++ {
+		for j := 0; j < rows; j++ {
 			colCenter += nat[j][i]
 		}
 		colCenter /= float64(rows)
@@ -103,7 +106,7 @@ func ZCA(data tensor.Tensor) (tensor.Tensor, error) {
 	if dataTranspose, err =  tensor.T(dataClone); err != nil {	// 求得中心化完成后的矩阵的转置
 		return nil, err
 	}
-	if sigma, err = tensor.MatMul(dataTranspose, data); err != nil {	// 求矩阵Σ
+	if sigma, err = tensor.MatMul(dataTranspose, dataClone); err != nil {	// 求矩阵Σ
 		return nil, err
 	}
 	cols := sigma.Shape()[1]	// 获取矩阵Σ列数
@@ -137,6 +140,65 @@ func ZCA(data tensor.Tensor) (tensor.Tensor, error) {
 	return tensor.MatMul(data, tmp)
 }
 
+// FillRandom 随机填充[]float64
+// 使用连续均匀分布中的随机值填充[]float64
+//
+// 入参
+//	data []float64	// 要填充的目标数组
+//	val float64		// 随机值分布限制
+func FillRandom(data []float64, val float64) {
+	dist := distuv.Uniform{
+		Min: -1 / math.Sqrt(val),
+		Max: 1 / math.Sqrt(val),
+	}
+	for i := range data {	// 在分布范围内抽取随机数填充目标数组
+		data[i] = dist.Rand()
+	}
+}
+
+// Sigmoid （Logistic）神经网络激活函数
+// 用于隐层神经元输出，将给定float64实数映射到(0,1)
+// 定义公式 $ S(x) = \frac{1}{1 + e^{-x}} $
+//
+// 入参
+//	x float64	// 给定float64实数
+//
+// 返回
+//	float64		// 映射结果
+func Sigmoid(x float64) float64 {
+	return 1 / (1 + math.Exp(-1 * x))
+}
+
+// DSigmoid Sigmoid的导数
+//
+// 入参
+//	x float64	// 给定float64实数
+//
+// 返回
+//	float64		// 运算结果
+func DSigmoid(x float64) float64 {
+	return (1 - x) * x
+}
+
+// Argmax 计算给定数据切片中最大值的索引
+//
+// 入参
+//	data []float64	// 给定数据切片
+//
+// 返回
+//	int				// 最大值的索引
+// Deprecated: 不如用vecf64.Argmax
+func Argmax(data []float64) int {
+	var index int
+	var max = math.Inf(-1)
+	for i := range data {
+		if data[i] > max {
+			index = i
+			max = data[i]
+		}
+	}
+	return index
+}
 
 //64位平方根倒数速算法1.卡马克反转。基础是牛顿迭代法。
 func sqrtRootFloat64(number float64) float64 {
@@ -151,6 +213,21 @@ func sqrtRootFloat64(number float64) float64 {
 	y = y * (f - (x * y * y))
 	y = y * (f - (x * y * y))
 	return number * y
+}
+
+// ShuffleX 随机排列函数
+//
+// 入参
+//	data [][]float64	// 要随机排列的float64切片
+func ShuffleX(data [][]float64) {
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	tmp := make([]float64, len(data[0]))
+	for i := range data {
+		j := r.Intn(i + 1)
+		copy(tmp, data[i])
+		copy(data[i], data[j])
+		copy(data[j], tmp)
+	}
 }
 
 //64位平方根倒数速算法2
