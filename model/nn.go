@@ -79,20 +79,20 @@ func (snn *SNN) SNNTrain(x, y tensor.Tensor, learnRate float64) (float64, error)
 		return tensor.MatMul(snn.Hidden, x)
 	})
 	// 执行激活函数
-	//hiddenSigmoid :=  m.Sigmoid(hidden)
+	hiddenSigmoid :=  m.Sigmoid(hidden)
 
-	hiddenSigmoid := m.Do(func() (tensor.Tensor, error) {
-		return hidden.Apply(utils.Sigmoid, tensor.UseUnsafe())
-	})
+	//hiddenSigmoid := m.Do(func() (tensor.Tensor, error) {
+	//	return hidden.Apply(utils.Sigmoid, tensor.UseUnsafe())
+	//})
 
 	// 隐层输出层权重矩阵乘隐层数据矩阵
 	final := m.Do(func() (tensor.Tensor, error) {
 		return tensor.MatMul(snn.Final, hiddenSigmoid)
 	})
-	// pred := m.Sigmoid(final)
-	pred := m.Do(func() (tensor.Tensor, error) {
-		return final.Apply(utils.Sigmoid, tensor.UseUnsafe())
-	})
+	pred := m.Sigmoid(final)
+	//pred := m.Do(func() (tensor.Tensor, error) {
+	//	return final.Apply(utils.Sigmoid, tensor.UseUnsafe())
+	//})
 	// 反向传播
 	var cost float64
 	// 计算输出层误差， 标签减去结果得到误差

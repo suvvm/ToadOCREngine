@@ -76,9 +76,9 @@ func PrepareY(labels []common.MNISTLabel) tensor.Tensor {
 	for i := 0; i < rows; i++ {                     // 复制缩放后的像素切片进入矩阵平面切片
 		for j := 0; j < common.MNISTNumLabels; j++ {
 			if j == int(labels[i]) {
-				supportSlice = append(supportSlice, 1)
+				supportSlice = append(supportSlice, 0.999)
 			} else {
-				supportSlice = append(supportSlice, 0)
+				supportSlice = append(supportSlice, 0.001)
 			}
 		}
 	}
