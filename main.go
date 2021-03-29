@@ -42,5 +42,5 @@ func main() {
 	if err = method.Visualize(dataZCA, 10, 10, "imageZCA.png"); err != nil {
 		log.Fatalf("visualize error:%v", err)
 	}
-	nn.SNNTrainingTest(dataZCA,datalabs)
+	nn.SNNTrainingTest(dataImgs, dataZCA, datalabs)
 }
