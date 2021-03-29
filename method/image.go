@@ -147,3 +147,17 @@ func Visualize(data tensor.Tensor, rows, cols int, filename string) error {
 	return nil
 }
 
+// VisualizeWeights 保存神经网络训练结果(两个权重张量)并将其可视化
+// 待完成
+//
+// 入参
+//	w tensor.Tensor	// 权重张量
+//	rows int		// 行数
+//	cols int		// 列数
+//	filename string	// 可视化图像文件名
+//
+// 返回
+//	error			// 错误信息
+func VisualizeWeights(w tensor.Tensor, rows, cols int, filename string) error {
+	return nil
+}

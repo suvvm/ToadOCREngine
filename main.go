@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"os"
+	"suvvm.work/toad_ocr_engine/common"
 	"suvvm.work/toad_ocr_engine/method"
 	"suvvm.work/toad_ocr_engine/nn"
 	"suvvm.work/toad_ocr_engine/utils"
@@ -29,18 +30,49 @@ func main() {
 	// 将图像与标签转化为张量
 	dataImgs := method.PrepareX(images)
 	datalabs := method.PrepareY(labels)
-	// 可视化一个由10 * 10个原始图像组成的图像
-	if err = method.Visualize(dataImgs, 10, 10, "image.png"); err != nil {
-		log.Fatalf("visualize error:%v", err)
-	}
+
 	// 对图像进行ZCA白化
 	dataZCA, err := utils.ZCA(dataImgs)
 	if err != nil {
 		log.Fatalf("err:%v", err)
 	}
-	// 可视化上方图像的ZCA白化版本
-	if err = method.Visualize(dataZCA, 10, 10, "imageZCA.png"); err != nil {
-		log.Fatalf("visualize error:%v", err)
+
+	//// 可视化一个由10 * 10个原始图像组成的图像
+	//if err = method.Visualize(dataImgs, common.MNISTUnitRows, common.MNISTUnitCols, "image.png"); err != nil {
+	//	log.Fatalf("visualize error:%v", err)
+	//}
+	//// 可视化上方图像的ZCA白化版本
+	//if err = method.Visualize(dataZCA, common.MNISTUnitRows, common.MNISTUnitCols, "imageZCA.png"); err != nil {
+	//	log.Fatalf("visualize error:%v", err)
+	//}
+
+	// 构建一个三层基础神经网络
+	// 输入层神经元common.MNISTRawImageRows * common.MNISTRawImageCols个
+	// 隐层神经元common.MNISTRawImageRows * common.MNISTRawImageCols个
+	// 输出层神经元10个
+	snn := nn.NewSNN(common.MNISTRawImageRows * common.MNISTRawImageCols,
+		100, 10)
+	//snn := nn.NewSNN(common.MNISTRawImageRows * common.MNISTRawImageCols,
+	//	common.MNISTRawImageRows * common.MNISTRawImageCols, 10)
+	// 训练SNN10次
+	nn.SNNTraining(snn, dataImgs, dataZCA, datalabs, 10)
+	// 运行MNIST测试集并交叉验证
+	log.Printf("Start Testing")
+	// 读取MNIST测试集合
+	reader, err = os.Open("resources/mnist/t10k-images-idx3-ubyte")
+	if err != nil {
+		log.Fatalf("err:%s", err)
 	}
-	nn.SNNTrainingTest(dataZCA,datalabs)
+	testImgs, err := utils.ReadImageFile(reader)
+	// 读取MNIST标签集合
+	reader, err = os.Open("resources/mnist/t10k-labels-idx1-ubyte")
+	if err != nil {
+		log.Fatalf("err:%s", err)
+	}
+	testLabs, err := utils.ReadLabelFile(reader)
+	// 将图像与标签转化为张量
+	testData := method.PrepareX(testImgs)
+	testLbl := method.PrepareY(testLabs)
+	// 执行测试
+	nn.SNNTesting(snn, testData, testLbl)
 }

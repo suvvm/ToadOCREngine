@@ -61,7 +61,7 @@ func (snn *SNN) Predict(data tensor.Tensor) (int, error) {
 // 返回
 //	float64				// 本次成本
 //	error				// 错误信息
-func (snn *SNN) SNNTrain(x, y tensor.Tensor, learnRate float64) (float64, error) {
+func (snn *SNN) Train(x, y tensor.Tensor, learnRate float64) (float64, error) {
 	// 预测
 	var m Maybe
 	// 调整图像张量为一维张量
