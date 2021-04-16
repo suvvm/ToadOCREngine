@@ -3,7 +3,11 @@ package nn
 import (
 	"gorgonia.org/gorgonia"
 	"gorgonia.org/tensor"
+	"log"
+	"os"
+	"suvvm.work/toad_ocr_engine/method"
 	"suvvm.work/toad_ocr_engine/model"
+	"suvvm.work/toad_ocr_engine/utils"
 )
 
 // NewCNN 新建卷积神经网络
@@ -52,4 +56,70 @@ func NewCNN(g *gorgonia.ExprGraph) *model.CNN {
 		D2: 0.2,
 		D3: 0.55,
 	}
+}
+
+func RunCNN() {
+	// 读取图像文件
+	reader, err := os.Open("resources/mnist/train-images-idx3-ubyte")
+	if err != nil {
+		log.Fatalf("err:%s", err)
+	}
+	images, err := utils.ReadImageFile(reader)
+	// 读取标签文件
+	reader, err = os.Open("resources/mnist/train-labels-idx1-ubyte")
+	if err != nil {
+		log.Fatalf("err:%v", err)
+	}
+	labels, err := utils.ReadLabelFile(reader)
+	if err != nil {
+		log.Fatalf("err:%v", err)
+	}
+	// 打印图像与标签数量
+	log.Printf("number of imgs:%d, number of labs:%d", len(images), len(labels))
+	// 将图像与标签转化为张量
+	dataImgs := method.PrepareX(images)
+	// datalabs := method.PrepareY(labels)
+	// 对图像进行ZCA白化
+	//dataZCA, err := utils.ZCA(dataImgs)
+	//if err != nil {
+	//	log.Fatalf("err:%v", err)
+	//}
+	//nat, err := native.MatrixF64(dataZCA.(*tensor.Dense))
+	//if err != nil {
+	//	log.Fatal(err)
+	//}
+	// 使用卷积神经网络前将图像数据转换为(cnnImgsData, 1, 28, 28) (BHCW)
+	cnnImgsData := dataImgs.Shape()[0]
+	bs := 100
+	if err := dataImgs.Reshape(cnnImgsData, 1, 28, 28); err != nil {
+		log.Fatal(err)
+	}
+	var dt tensor.Dtype
+	// 构造表达式图
+	g := gorgonia.NewGraph()
+	x := gorgonia.NewTensor(g, dt, 4, gorgonia.WithShape(bs, 1, 28, 28), gorgonia.WithName("x"))
+	y := gorgonia.NewMatrix(g, dt, gorgonia.WithShape(bs, 10), gorgonia.WithName("y"))
+	// 构建卷积神经网络
+	m := NewCNN(g)
+	if err = m.Fwd(x); err != nil {
+		log.Fatalf("%+v", err)
+	}
+	losses := gorgonia.Must(gorgonia.HadamardProd(m.Out, y))
+	cost := gorgonia.Must(gorgonia.Mean(losses))
+	cost = gorgonia.Must(gorgonia.Neg(cost))
+	// 跟踪成本
+	var costVal gorgonia.Value
+	gorgonia.Read(cost, &costVal)
+	// 根据权重矩阵获取成本
+	if _, err = gorgonia.Grad(cost, m.Learnables()...); err != nil {
+		log.Fatal(err)
+	}
+	// 编译卷积神经网络构造表达式图并输出
+	prog, locMap, _ := gorgonia.Compile(g)
+	log.Printf("%v", prog)
+	// 创建一个由构造表达式图编译为的VM
+	vm := gorgonia.NewTapeMachine(g, gorgonia.WithPrecompiled(prog, locMap), gorgonia.BindDualValues(m.Learnables()...))
+	// 创建求解器
+	//solver := gorgonia.NewRMSPropSolver(gorgonia.WithBatchSize(float64(bs)))
+	defer vm.Close()
 }

@@ -31,7 +31,7 @@ type CNN struct {
 //
 // 返回
 //	error				// 错误信息
-func (cnn *CNN) fwd (x *gorgonia.Node) error {
+func (cnn *CNN) Fwd (x *gorgonia.Node) error {
 	// 第0层
 	var c0, c1, c2, fc *gorgonia.Node
 	var a0, a1, a2, a3 *gorgonia.Node
@@ -109,4 +109,8 @@ func (cnn *CNN) fwd (x *gorgonia.Node) error {
 	}
 	cnn.Out, err = gorgonia.SoftMax(out)	// 使用softmax 函数进行激活
 	return nil
+}
+
+func (cnn *CNN) Learnables() gorgonia.Nodes {
+	return gorgonia.Nodes{cnn.W0, cnn.W1, cnn.W2, cnn.W3, cnn.W4}
 }
