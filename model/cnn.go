@@ -38,6 +38,10 @@ func (cnn *CNN) Fwd (x *gorgonia.Node) error {
 	var p0, p1, p2 *gorgonia.Node
 	var l0, l1, l2, l3 *gorgonia.Node
 	var err error
+
+	log.Printf("x:%v", x)
+	log.Printf("w0:%v", cnn.W0)
+
 	if c0, err = gorgonia.Conv2d(x, cnn.W0, tensor.Shape{3, 3},
 	[]int{1, 1}, []int{1, 1}, []int{1, 1}); err != nil {	// 卷积第0层
 		return errors.Wrap(err, "Layer 0 Convolution failed")	// 跟踪错误信息
