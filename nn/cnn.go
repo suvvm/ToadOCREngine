@@ -152,11 +152,11 @@ func RunCNN() {
 				end = cnnImgsData
 			}
 			var xVal, yVal tensor.Tensor
-			if xVal, err = dataImgs.Slice(sli{start, end}); err != nil {
+			if xVal, err = dataImgs.Slice(model.MakeRS(start, end, 1)); err != nil {
 				log.Fatal("Unable to slice x")
 			}
 
-			if yVal, err = datalabs.Slice(sli{start, end}); err != nil {
+			if yVal, err = datalabs.Slice(model.MakeRS(start, end, 1)); err != nil {
 				log.Fatal("Unable to slice y")
 			}
 			if err = xVal.(*tensor.Dense).Reshape(bs, 1, 28, 28); err != nil {
@@ -234,11 +234,3 @@ func RunCNN() {
 	fmt.Printf("Correct/Totals: %v/%v = %1.3f\n", correct, total, correct/total)
 	log.Printf("Correct/Totals: %v/%v = %1.3f\n", correct, total, correct/total)
 }
-
-type sli struct {
-	start, end int
-}
-
-func (s sli) Start() int { return s.start }
-func (s sli) End() int   { return s.end }
-func (s sli) Step() int  { return 1 }
