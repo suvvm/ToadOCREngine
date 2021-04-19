@@ -112,6 +112,7 @@ func (cnn *CNN) Fwd (x *gorgonia.Node) error {
 		return errors.Wrapf(err, "Unable to multiply l3 and w4")
 	}
 	cnn.Out, err = gorgonia.SoftMax(out)	// 使用softmax 函数进行激活
+	gorgonia.Read(cnn.Out, &cnn.OutVal)		// 保存预测结果
 	return nil
 }
 

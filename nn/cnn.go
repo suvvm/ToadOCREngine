@@ -136,7 +136,7 @@ func RunCNN() {
 	// 设置刷新率，每秒刷新进度条
 	bar.SetRefreshRate(time.Second)
 	// 进度条最大宽度
-	bar.SetMaxWidth(80)
+	bar.SetMaxWidth(100)
 
 	for i := 0; i < 100; i++ {
 		bar.Prefix(fmt.Sprintf("Epoch %d", i))
@@ -152,11 +152,11 @@ func RunCNN() {
 				end = cnnImgsData
 			}
 			var xVal, yVal tensor.Tensor
-			if xVal, err = dataImgs.Slice(model.MakeRS(start, end, 1)); err != nil {
+			if xVal, err = dataImgs.Slice(sli{start, end}); err != nil {
 				log.Fatal("Unable to slice x")
 			}
 
-			if yVal, err = datalabs.Slice(model.MakeRS(start, end, 1)); err != nil {
+			if yVal, err = datalabs.Slice(sli{start, end}); err != nil {
 				log.Fatal("Unable to slice y")
 			}
 			if err = xVal.(*tensor.Dense).Reshape(bs, 1, 28, 28); err != nil {
@@ -174,11 +174,6 @@ func RunCNN() {
 		}
 		log.Printf("Epoch %d | cost %v", i, costVal)
 	}
-
-	var out gorgonia.Value
-	rv := gorgonia.Read(m.Out, &out)
-	fwdNet := m.G.SubgraphRoots(rv)
-	vm2 := gorgonia.NewTapeMachine(fwdNet)
 
 	reader, err = os.Open("resources/mnist/t10k-images-idx3-ubyte")
 	if err != nil {
@@ -205,32 +200,111 @@ func RunCNN() {
 	//	log.Fatal(err)
 	//}
 
-	var correct, total float64
-	var oneimg, onelabel tensor.Tensor
-	var predicted, errcount int
-	for i := 0; i < shape[0]; i++ {
-		if oneimg, err = testData.Slice(model.MakeRS(i, i+1)); err != nil {
-			log.Fatalf("Unable to slice one image %d", i)
-		}
-		if onelabel, err = testLbl.Slice(model.MakeRS(i, i+1)); err != nil {
-			log.Fatalf("Unable to slice one label %d", i)
-		}
-		label := utils.Argmax(onelabel.Data().([]float64))
-		gorgonia.Let(x, oneimg)
-		if err = vm2.RunAll(); err != nil {
-			log.Fatal("Predicting %d failed %v", i, err)
-		}
-		outRaw := out.Data().([]float64)
-		predicted = utils.Argmax(outRaw)
+	var correct, total, errcount float64
+	var testBs int
+	numExamples := shape[0]
+	testBs = 100
+	batches = numExamples / testBs
 
-		if predicted == label {
-			correct++
-		} else if errcount < 5 {
-			method.Visualize(oneimg, 1, 1, fmt.Sprintf("%d_%d_%d.png", i, label, predicted))
-			errcount++
+	for b := 0; b < batches; b++ {
+		start := b * testBs
+		end := start + testBs
+		if start >= numExamples {
+			break
 		}
-		total++
+		if end > numExamples {
+			end = numExamples
+		}
+		var xVal, yVal tensor.Tensor
+		if xVal, err = testData.Slice(sli{start, end}); err != nil {
+			log.Fatal("Unable to slice x")
+		}
+
+		if yVal, err = testLbl.Slice(sli{start, end}); err != nil {
+			log.Fatal("Unable to slice y")
+		}
+		if err = xVal.(*tensor.Dense).Reshape(testBs, 1, 28, 28); err != nil {
+			log.Fatalf("Unable to reshape %v", err)
+		}
+
+		gorgonia.Let(x, xVal)
+		// gorgonia.Let(y, yVal)
+		if err = vm.RunAll(); err != nil {
+			log.Fatalf("Failed at epoch  %d: %v", b, err)
+		}
+		label, _ := yVal.(*tensor.Dense).Argmax(1)
+		predicted, _ := m.OutVal.(*tensor.Dense).Argmax(1)
+		lblData := label.Data().([]int)
+		log.Printf("\np:%v\n",  predicted.Data().([]int))
+		for j, p := range predicted.Data().([]int) {
+			if p == lblData[j] {
+				correct++
+			} else {
+				errcount++
+			}
+			total++
+		}
+		vm.Reset()
 	}
-	fmt.Printf("Correct/Totals: %v/%v = %1.3f\n", correct, total, correct/total)
+
+	//for i := 0; i < batches; i++ {
+	//	start := i * testBs
+	//	end := start + testBs
+	//	if start >= numExamples {
+	//		break
+	//	}
+	//	if end > numExamples {
+	//		end = numExamples
+	//	}
+	//	if oneimg, err = testData.Slice(sli{start, end}); err != nil {
+	//		log.Fatalf("Unable to slice one image %d", i)
+	//	}
+	//	if onelabel, err = testLbl.Slice(sli{start, end}); err != nil {
+	//		log.Fatalf("Unable to slice one label %d", i)
+	//	}
+	//	if err = oneimg.(*tensor.Dense).Reshape(testBs, 1, 28, 28); err != nil {
+	//		log.Fatalf("Unable to reshape %v", err)
+	//	}
+	//	gorgonia.Let(x, oneimg)
+	//	if err = vm.RunAll(); err != nil {
+	//		log.Fatalf("Predicting %d failed %v", i, err)
+	//	}
+	//	label, _ := onelabel.(*tensor.Dense).Argmax(1)
+	//	predicted, _ := m.OutVal.(*tensor.Dense).Argmax(1)
+	//	lblData := label.Data().([]int)
+	//	log.Printf("\np:%v\n",  predicted.Data().([]int))
+	//	for j, p := range predicted.Data().([]int) {
+	//		// log.Printf("\np:%v l:%v\n", p, lblData[j])
+	//		if p == lblData[j] {
+	//			correct++
+	//		} else {
+	//			errcount++
+	//		}
+	//		total++
+	//	}
+	//
+	//	//outRaw := m.OutVal.Data().([]float64)
+	//	// log.Printf("\noutRawSize:%v\n", len(outRaw))
+	//	//// outputLab := tensor.New(tensor.WithShape(1, 10), tensor.WithBacking(outRaw))
+	//	//// outputLab := tensor.New(tensor.WithShape(1, 10), tensor.WithBacking(outRaw))
+	//	//predicted = utils.Argmax(outRaw)
+	//	//log.Printf("\n p:%v \n l:%v \n\n", predicted, label)
+	//	//if predicted == label {
+	//	//	correct++
+	//	//} else {
+	//	//	// method.Visualize(oneimg, 1, 1, fmt.Sprintf("%d_%d_%d.png", i, label, predicted))
+	//	//	errcount++
+	//	//}
+	//	//total++
+	//}
+	fmt.Printf("Error/Totals: %v/%v = %1.3f\n", errcount, total, errcount/total)
 	log.Printf("Correct/Totals: %v/%v = %1.3f\n", correct, total, correct/total)
 }
+
+type sli struct {
+	start, end int
+}
+
+func (s sli) Start() int { return s.start }
+func (s sli) End() int   { return s.end }
+func (s sli) Step() int  { return 1 }
