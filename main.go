@@ -21,8 +21,8 @@ import "suvvm.work/toad_ocr_engine/nn"
 //	// 打印图像与标签数量
 //	log.Printf("number of imgs:%d, number of labs:%d", len(images), len(labels))
 //	// 将图像与标签转化为张量
-//	dataImgs := method.PrepareX(images)
-//	datalabs := method.PrepareY(labels)
+//	dataImgs := utils.PrepareX(images)
+//	datalabs := utils.PrepareY(labels)
 //
 //	// 对图像进行ZCA白化
 //	dataZCA, err := utils.ZCA(dataImgs)
@@ -64,8 +64,8 @@ import "suvvm.work/toad_ocr_engine/nn"
 //	}
 //	testLabs, err := utils.ReadLabelFile(reader)
 //	// 将图像与标签转化为张量
-//	testData := method.PrepareX(testImgs)
-//	testLbl := method.PrepareY(testLabs)
+//	testData := utils.PrepareX(testImgs)
+//	testLbl := utils.PrepareY(testLabs)
 //	// 执行测试
 //	nn.SNNTesting(snn, testData, testLbl)
 //}

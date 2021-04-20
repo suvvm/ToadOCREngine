@@ -17,6 +17,7 @@ type CNN struct {
 	D0, D1, D2, D3 float64				// 退出概率
 	Out *gorgonia.Node
 	OutVal gorgonia.Value
+	VM gorgonia.VM
 }
 
 // fwd 前向传播函数
@@ -95,7 +96,7 @@ func (cnn *CNN) Fwd (x *gorgonia.Node) error {
 	if l2, err = gorgonia.Dropout(r2, cnn.D2); err != nil {	// 第2层概率退出
 		return errors.Wrap(err, "Unable to apply a dropout on layer 2")
 	}
-	_ = ioutil.WriteFile("tmp.dot", []byte(cnn.G.ToDot()), 0644)
+	_ = ioutil.WriteFile("output/tmp.dot", []byte(cnn.G.ToDot()), 0644)
 	// 第3层
 	if fc, err = gorgonia.Mul(l2, cnn.W3); err != nil {
 		return errors.Wrapf(err, "Unable to multiply l2 and w3")
@@ -118,4 +119,14 @@ func (cnn *CNN) Fwd (x *gorgonia.Node) error {
 
 func (cnn *CNN) Learnables() gorgonia.Nodes {
 	return gorgonia.Nodes{cnn.W0, cnn.W1, cnn.W2, cnn.W3, cnn.W4}
+}
+
+func (cnn *CNN) VMBuild() gorgonia.VM {
+	// 编译卷积神经网络构造表达式图并输出
+	prog, locMap, _ := gorgonia.Compile(cnn.G)
+	log.Printf("%v", prog)
+	// 创建一个由构造表达式图编译为的VM
+	vm := gorgonia.NewTapeMachine(cnn.G, gorgonia.WithPrecompiled(prog, locMap), gorgonia.BindDualValues(cnn.Learnables()...))
+	cnn.VM = vm
+	return vm
 }

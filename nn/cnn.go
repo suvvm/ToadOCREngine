@@ -5,9 +5,9 @@ import (
 	"github.com/cheggaaa/pb"
 	"gorgonia.org/gorgonia"
 	"gorgonia.org/tensor"
+	"gorgonia.org/vecf64"
 	"log"
-	"os"
-	"suvvm.work/toad_ocr_engine/method"
+	"suvvm.work/toad_ocr_engine/common"
 	"suvvm.work/toad_ocr_engine/model"
 	"suvvm.work/toad_ocr_engine/utils"
 	"time"
@@ -61,27 +61,169 @@ func NewCNN(g *gorgonia.ExprGraph) *model.CNN {
 	}
 }
 
+// CNNTraining 卷积神经网络训练函数，根据传入的图像与标签信息对现有cnn进行训练
+//
+// 入参
+//	cnn *model.CNN			// 卷积神经网络
+//	dataImgs tensor.Tensor	// 训练集图像张量
+//	dataLabs tensor.Tensor	// 训练集标签张量
+//	costVal gorgonia.Value	// 受监控的训练成本
+func CNNTraining(cnn *model.CNN, dataImgs, dataLabs tensor.Tensor, costVal gorgonia.Value) {
+	dataSize := dataImgs.Shape()[0]
+	// 表达式网络输入数据x，内容为等候训练或预测的图像数据张量
+	x := gorgonia.NewTensor(cnn.G, tensor.Float64, 4, gorgonia.WithShape(common.CNNBatchSize,
+		common.MNISTRawImageChannel, common.MNISTRawImageRows,common.MNISTRawImageCols), gorgonia.WithName("x"))
+	// 表达式网络输入数据y，内容为上述图像数据对应标签张量
+	y := gorgonia.NewMatrix(cnn.G, tensor.Float64, gorgonia.WithShape(common.CNNBatchSize,
+		common.MNISTNumLabels), gorgonia.WithName("y"))
+	var err error
+	// 创建求解器
+	solver := gorgonia.NewRMSPropSolver(gorgonia.WithBatchSize(float64(common.CNNBatchSize)))
+	// 计算每个百分比所占数据量大小
+	batches := dataSize / common.CNNBatchSize
+	// 构造进度条
+	// 设置刷新率，每秒刷新进度条
+	// 设置进度条最大宽度
+	bar := pb.New(batches)
+	bar.SetRefreshRate(time.Second)
+	bar.SetMaxWidth(common.BarMaxWidth)
+	// 开始分阶段训练，每个阶段训练一遍全部数据集合
+	for i := 0; i < common.CNNEpoch; i++ {
+		// 重制进度条与本阶段准确率信息
+		bar.Prefix(fmt.Sprintf("Epoch %d", i))
+		bar.Set(0)
+		bar.Start()
+		accuracyGuess := float64(0)
+		// 开始分批次训练数据，每个批次训练common.CNNBatchSize个原始图像
+		for b := 0; b < batches; b++ {
+			start := b * common.CNNBatchSize
+			end := start + common.CNNBatchSize
+			if start >= dataSize {
+				break
+			}
+			if end > dataSize {
+				end = dataSize
+			}
+			// 切片图像与标签张量
+			var xVal, yVal tensor.Tensor
+			if xVal, err = dataImgs.Slice(model.MakeRS(start, end)); err != nil {
+				log.Fatal("Unable to slice x")
+			}
+			if yVal, err = dataLabs.Slice(model.MakeRS(start, end)); err != nil {
+				log.Fatal("Unable to slice y")
+			}
+			if err = xVal.(*tensor.Dense).Reshape(common.CNNBatchSize, common.MNISTRawImageChannel,
+				common.MNISTRawImageRows, common.MNISTRawImageCols); err != nil {
+				log.Fatalf("Unable to reshape %v", err)
+			}
+			gorgonia.Let(x, xVal)
+			gorgonia.Let(y, yVal)
+			if err = cnn.VM.RunAll(); err != nil {	// 运行表达式网络
+				log.Fatalf("Failed at epoch  %d: %v", i, err)
+			}
+			outputData := cnn.OutVal.Data().([]float64)	// 获取预测信息
+			outputLab := tensor.New(tensor.WithShape(common.CNNBatchSize, common.MNISTNumLabels), tensor.WithBacking(outputData))
+			// 准确率统计
+			for j := 0; j < yVal.Shape()[0]; j++ {
+				yRowT, _ :=  yVal.Slice(model.MakeRS(j, j + 1))
+				yRow := yRowT.Data().([]float64)
+				lab := vecf64.Argmax(yRow)
+				preRowT, _ := outputLab.Slice(model.MakeRS(j, j + 1))
+				preRow := preRowT.Data().([]float64)
+				prelab :=  vecf64.Argmax(preRow)
+				if lab == prelab {
+					accuracyGuess += 1.0 / float64(dataSize)
+				}
+			}
+			// RMSProp梯度下降学习
+			if err = solver.Step(gorgonia.NodesToValueGrads(cnn.Learnables())); err != nil {
+				log.Fatalf("Failed at solver %v", err)
+			}
+			cnn.VM.Reset()
+			bar.Increment()
+		}
+		// 输出本次训练信息
+		log.Printf("Epoch %d | cost %v | guess %v", i, costVal, accuracyGuess)
+	}
+	bar.Finish()
+}
+
+// CNNTesting 卷积神经网络测试函数，根据传入的测试集图像与标签信息对现有cnn进行测试
+//
+// 入参
+//	cnn *model.CNN			// 现有卷积神经网络
+//	testData tensor.Tensor	// 测试集图像张量
+//	testLbl tensor.Tensor	// 测试集标签张量
+func CNNTesting(cnn *model.CNN, testData, testLbl tensor.Tensor) {
+	var correct, total, errcount float64
+	var testBs int
+	var err error
+	testBs = 100	// 测试集每批次测试数量
+	// 表达式网络输入数据x，内容为等候训练或预测的图像数据张量
+	x := gorgonia.NewTensor(cnn.G, tensor.Float64, 4, gorgonia.WithShape(testBs, common.MNISTRawImageChannel,
+		common.MNISTRawImageRows, common.MNISTRawImageCols), gorgonia.WithName("x"))
+	shape := testData.Shape()
+	testDataSize := shape[0]
+	batches := testDataSize / testBs
+	// 构造进度条
+	bar := pb.New(batches)
+	// 设置刷新率，每秒刷新进度条
+	bar.SetRefreshRate(time.Second)
+	// 进度条最大宽度
+	bar.SetMaxWidth(common.BarMaxWidth)
+	bar.Prefix("Testing")
+	bar.Set(0)
+	bar.Start()
+	// 开始分批测试
+	for b := 0; b < batches; b++ {
+		start := b * testBs
+		end := start + testBs
+		if start >= testDataSize {
+			break
+		}
+		if end > testDataSize {
+			end = testDataSize
+		}
+		// 测试集张量切片
+		var xVal, yVal tensor.Tensor
+		if xVal, err = testData.Slice(model.MakeRS(start, end)); err != nil {
+			log.Fatal("Unable to slice x")
+		}
+		if yVal, err = testLbl.Slice(model.MakeRS(start, end)); err != nil {
+			log.Fatal("Unable to slice y")
+		}
+		if err = xVal.(*tensor.Dense).Reshape(testBs, common.MNISTRawImageChannel,
+			common.MNISTRawImageRows, common.MNISTRawImageCols); err != nil {
+			log.Fatalf("Unable to reshape %v", err)
+		}
+		gorgonia.Let(x, xVal)
+		if err = cnn.VM.RunAll(); err != nil {	// 运行表达式网络
+			log.Fatalf("Failed at epoch  %d: %v", b, err)
+		}
+		// 记录测试结果
+		label, _ := yVal.(*tensor.Dense).Argmax(1)
+		predicted, _ := cnn.OutVal.(*tensor.Dense).Argmax(1)
+		lblData := label.Data().([]int)
+		// log.Printf("\np:%v\n",  predicted.Data().([]int))
+		for j, p := range predicted.Data().([]int) {
+			if p == lblData[j] {
+				correct++
+			} else {
+				errcount++
+			}
+			total++
+		}
+		cnn.VM.Reset()
+		bar.Increment()
+	}
+	bar.Finish()
+	// log.Printf("Error/Totals: %v/%v = %1.3f\n", errcount, total, errcount/total)
+	log.Printf("Correct/Totals: %v/%v = %1.3f\n", correct, total, correct/total)
+}
+
+// RunCNN 卷积神经网络运行函数
 func RunCNN() {
-	// 读取图像文件
-	reader, err := os.Open("resources/mnist/train-images-idx3-ubyte")
-	if err != nil {
-		log.Fatalf("err:%s", err)
-	}
-	images, err := utils.ReadImageFile(reader)
-	// 读取标签文件
-	reader, err = os.Open("resources/mnist/train-labels-idx1-ubyte")
-	if err != nil {
-		log.Fatalf("err:%v", err)
-	}
-	labels, err := utils.ReadLabelFile(reader)
-	if err != nil {
-		log.Fatalf("err:%v", err)
-	}
-	// 打印图像与标签数量
-	log.Printf("number of imgs:%d, number of labs:%d", len(images), len(labels))
-	// 将图像与标签转化为张量
-	dataImgs := method.PrepareX(images)
-	datalabs := method.PrepareY(labels)
+	dataImgs, datalabs, testData, testLbl := utils.LoadMNIST()
 	// 对图像进行ZCA白化
 	//dataZCA, err := utils.ZCA(dataImgs)
 	//if err != nil {
@@ -93,218 +235,35 @@ func RunCNN() {
 	//}
 	// 使用卷积神经网络前将图像数据转换为(cnnImgsData, 1, 28, 28) (BHCW)
 	cnnImgsData := dataImgs.Shape()[0]
-	bs := 100
-	if err := dataImgs.Reshape(cnnImgsData, 1, 28, 28); err != nil {
+	if err := dataImgs.Reshape(cnnImgsData, common.MNISTRawImageChannel,
+		common.MNISTRawImageRows, common.MNISTRawImageCols); err != nil {
 		log.Fatal(err)
 	}
-	var dt tensor.Dtype
-	dt =  tensor.Float64
 	// 构造表达式图
 	g := gorgonia.NewGraph()
-	x := gorgonia.NewTensor(g, dt, 4, gorgonia.WithShape(bs, 1, 28, 28), gorgonia.WithName("x"))
-	y := gorgonia.NewMatrix(g, dt, gorgonia.WithShape(bs, 10), gorgonia.WithName("y"))
-	log.Printf("outx:%v",x)
-	log.Printf("outy:%v",y)
+	x := gorgonia.NewTensor(g, tensor.Float64, 4, gorgonia.WithShape(common.CNNBatchSize,
+		common.MNISTRawImageChannel, common.MNISTRawImageRows,
+		common.MNISTRawImageCols), gorgonia.WithName("x"))
+	// 表达式网络输入数据y，内容为上述图像数据对应标签张量
+	y := gorgonia.NewMatrix(g, tensor.Float64, gorgonia.WithShape(common.CNNBatchSize,
+		common.MNISTNumLabels), gorgonia.WithName("y"))
 	// 构建卷积神经网络
-	m := NewCNN(g)
-	if err = m.Fwd(x); err != nil {
+	cnn := NewCNN(g)
+	if err := cnn.Fwd(x); err != nil {
 		log.Fatalf("%+v", err)
 	}
-	losses := gorgonia.Must(gorgonia.HadamardProd(m.Out, y))
+	losses := gorgonia.Must(gorgonia.HadamardProd(cnn.Out, y))
 	cost := gorgonia.Must(gorgonia.Mean(losses))
 	cost = gorgonia.Must(gorgonia.Neg(cost))
 	// 跟踪成本
 	var costVal gorgonia.Value
 	gorgonia.Read(cost, &costVal)
 	// 根据权重矩阵获取成本
-	if _, err = gorgonia.Grad(cost, m.Learnables()...); err != nil {
+	if _, err := gorgonia.Grad(cost, cnn.Learnables()...); err != nil {
 		log.Fatal(err)
 	}
-	// 编译卷积神经网络构造表达式图并输出
-	prog, locMap, _ := gorgonia.Compile(g)
-	log.Printf("%v", prog)
-	// 创建一个由构造表达式图编译为的VM
-	vm := gorgonia.NewTapeMachine(g, gorgonia.WithPrecompiled(prog, locMap), gorgonia.BindDualValues(m.Learnables()...))
-	// 创建求解器
-	solver := gorgonia.NewRMSPropSolver(gorgonia.WithBatchSize(float64(bs)))
-	defer vm.Close()
-	// 计算每个百分比所占数据量大小
-	batches := cnnImgsData / bs
-	// log.Printf("Batches %d", batches)
-	// 构造进度条
-	bar := pb.New(batches)
-	// 设置刷新率，每秒刷新进度条
-	bar.SetRefreshRate(time.Second)
-	// 进度条最大宽度
-	bar.SetMaxWidth(100)
-
-	for i := 0; i < 100; i++ {
-		bar.Prefix(fmt.Sprintf("Epoch %d", i))
-		bar.Set(0)
-		bar.Start()
-		for b := 0; b < batches; b++ {
-			start := b * bs
-			end := start + bs
-			if start >= cnnImgsData {
-				break
-			}
-			if end > cnnImgsData {
-				end = cnnImgsData
-			}
-			var xVal, yVal tensor.Tensor
-			if xVal, err = dataImgs.Slice(sli{start, end}); err != nil {
-				log.Fatal("Unable to slice x")
-			}
-
-			if yVal, err = datalabs.Slice(sli{start, end}); err != nil {
-				log.Fatal("Unable to slice y")
-			}
-			if err = xVal.(*tensor.Dense).Reshape(bs, 1, 28, 28); err != nil {
-				log.Fatalf("Unable to reshape %v", err)
-			}
-
-			gorgonia.Let(x, xVal)
-			gorgonia.Let(y, yVal)
-			if err = vm.RunAll(); err != nil {
-				log.Fatalf("Failed at epoch  %d: %v", i, err)
-			}
-			solver.Step(gorgonia.NodesToValueGrads(m.Learnables()))
-			vm.Reset()
-			bar.Increment()
-		}
-		log.Printf("Epoch %d | cost %v", i, costVal)
-	}
-
-	reader, err = os.Open("resources/mnist/t10k-images-idx3-ubyte")
-	if err != nil {
-		log.Fatalf("err:%s", err)
-	}
-	testImgs, err := utils.ReadImageFile(reader)
-	if err != nil {
-		log.Fatal(err)
-	}
-	reader, err = os.Open("resources/mnist/t10k-labels-idx1-ubyte")
-	if err != nil {
-		log.Fatalf("err:%s", err)
-	}
-	testlabels, err := utils.ReadLabelFile(reader)
-	if err != nil {
-		log.Fatalf("err:%v", err)
-	}
-
-	testData := method.PrepareX(testImgs)
-	testLbl := method.PrepareY(testlabels)
-	shape := testData.Shape()
-	//testData2, err := utils.ZCA(testData)
-	//if err != nil {
-	//	log.Fatal(err)
-	//}
-
-	var correct, total, errcount float64
-	var testBs int
-	numExamples := shape[0]
-	testBs = 100
-	batches = numExamples / testBs
-
-	for b := 0; b < batches; b++ {
-		start := b * testBs
-		end := start + testBs
-		if start >= numExamples {
-			break
-		}
-		if end > numExamples {
-			end = numExamples
-		}
-		var xVal, yVal tensor.Tensor
-		if xVal, err = testData.Slice(sli{start, end}); err != nil {
-			log.Fatal("Unable to slice x")
-		}
-
-		if yVal, err = testLbl.Slice(sli{start, end}); err != nil {
-			log.Fatal("Unable to slice y")
-		}
-		if err = xVal.(*tensor.Dense).Reshape(testBs, 1, 28, 28); err != nil {
-			log.Fatalf("Unable to reshape %v", err)
-		}
-
-		gorgonia.Let(x, xVal)
-		// gorgonia.Let(y, yVal)
-		if err = vm.RunAll(); err != nil {
-			log.Fatalf("Failed at epoch  %d: %v", b, err)
-		}
-		label, _ := yVal.(*tensor.Dense).Argmax(1)
-		predicted, _ := m.OutVal.(*tensor.Dense).Argmax(1)
-		lblData := label.Data().([]int)
-		log.Printf("\np:%v\n",  predicted.Data().([]int))
-		for j, p := range predicted.Data().([]int) {
-			if p == lblData[j] {
-				correct++
-			} else {
-				errcount++
-			}
-			total++
-		}
-		vm.Reset()
-	}
-
-	//for i := 0; i < batches; i++ {
-	//	start := i * testBs
-	//	end := start + testBs
-	//	if start >= numExamples {
-	//		break
-	//	}
-	//	if end > numExamples {
-	//		end = numExamples
-	//	}
-	//	if oneimg, err = testData.Slice(sli{start, end}); err != nil {
-	//		log.Fatalf("Unable to slice one image %d", i)
-	//	}
-	//	if onelabel, err = testLbl.Slice(sli{start, end}); err != nil {
-	//		log.Fatalf("Unable to slice one label %d", i)
-	//	}
-	//	if err = oneimg.(*tensor.Dense).Reshape(testBs, 1, 28, 28); err != nil {
-	//		log.Fatalf("Unable to reshape %v", err)
-	//	}
-	//	gorgonia.Let(x, oneimg)
-	//	if err = vm.RunAll(); err != nil {
-	//		log.Fatalf("Predicting %d failed %v", i, err)
-	//	}
-	//	label, _ := onelabel.(*tensor.Dense).Argmax(1)
-	//	predicted, _ := m.OutVal.(*tensor.Dense).Argmax(1)
-	//	lblData := label.Data().([]int)
-	//	log.Printf("\np:%v\n",  predicted.Data().([]int))
-	//	for j, p := range predicted.Data().([]int) {
-	//		// log.Printf("\np:%v l:%v\n", p, lblData[j])
-	//		if p == lblData[j] {
-	//			correct++
-	//		} else {
-	//			errcount++
-	//		}
-	//		total++
-	//	}
-	//
-	//	//outRaw := m.OutVal.Data().([]float64)
-	//	// log.Printf("\noutRawSize:%v\n", len(outRaw))
-	//	//// outputLab := tensor.New(tensor.WithShape(1, 10), tensor.WithBacking(outRaw))
-	//	//// outputLab := tensor.New(tensor.WithShape(1, 10), tensor.WithBacking(outRaw))
-	//	//predicted = utils.Argmax(outRaw)
-	//	//log.Printf("\n p:%v \n l:%v \n\n", predicted, label)
-	//	//if predicted == label {
-	//	//	correct++
-	//	//} else {
-	//	//	// method.Visualize(oneimg, 1, 1, fmt.Sprintf("%d_%d_%d.png", i, label, predicted))
-	//	//	errcount++
-	//	//}
-	//	//total++
-	//}
-	fmt.Printf("Error/Totals: %v/%v = %1.3f\n", errcount, total, errcount/total)
-	log.Printf("Correct/Totals: %v/%v = %1.3f\n", correct, total, correct/total)
+	cnn.VMBuild()
+	defer cnn.VM.Close()
+	CNNTraining(cnn, dataImgs, datalabs, costVal)
+	CNNTesting(cnn, testData, testLbl)
 }
-
-type sli struct {
-	start, end int
-}
-
-func (s sli) Start() int { return s.start }
-func (s sli) End() int   { return s.end }
-func (s sli) Step() int  { return 1 }
