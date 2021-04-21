@@ -1,11 +1,14 @@
 package model
 
 import (
+	"encoding/gob"
 	"github.com/pkg/errors"
 	"gorgonia.org/gorgonia"
 	"gorgonia.org/tensor"
 	"io/ioutil"
 	"log"
+	"os"
+	"suvvm.work/toad_ocr_engine/common"
 )
 
 // CNN 四层卷积神经网络
@@ -126,7 +129,110 @@ func (cnn *CNN) VMBuild() gorgonia.VM {
 	prog, locMap, _ := gorgonia.Compile(cnn.G)
 	log.Printf("%v", prog)
 	// 创建一个由构造表达式图编译为的VM
-	vm := gorgonia.NewTapeMachine(cnn.G, gorgonia.WithPrecompiled(prog, locMap), gorgonia.BindDualValues(cnn.Learnables()...))
+	vm := gorgonia.NewTapeMachine(cnn.G, gorgonia.WithPrecompiled(prog, locMap),
+		gorgonia.BindDualValues(cnn.Learnables()...))
 	cnn.VM = vm
 	return vm
+}
+
+func (cnn *CNN) Persistence() error {
+	if err := save([]*gorgonia.Node{cnn.W0, cnn.W1, cnn.W2, cnn.W3, cnn.W4}); err != nil {
+		return err
+	}
+	return nil
+}
+
+func LoadCNNFromSave() (*CNN, error) {
+	f, err := os.Open("cnn_weights")
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	dec := gob.NewDecoder(f)
+	var w0_val, w1_val, w2_val, w3_val, w4_val *tensor.Dense
+	log.Println("decoding w0")
+	if err = dec.Decode(&w0_val); err != nil {
+		return nil, err
+	}
+	log.Println("decoding w1")
+	if err = dec.Decode(&w1_val); err != nil {
+		return nil, err
+	}
+	log.Println("decoding w2")
+	if err = dec.Decode(&w2_val); err != nil {
+		return nil, err
+	}
+	log.Println("decoding w3")
+	if err = dec.Decode(&w3_val); err != nil {
+		return nil, err
+	}
+	log.Println("decoding w4")
+	if err = dec.Decode(&w4_val); err != nil {
+		return nil, err
+	}
+	g := gorgonia.NewGraph()
+	x := gorgonia.NewTensor(g, tensor.Float64, 4, gorgonia.WithShape(common.CNNBatchSize,
+		common.MNISTRawImageChannel, common.MNISTRawImageRows,
+		common.MNISTRawImageCols), gorgonia.WithName("x"))
+	// 表达式网络输入数据y，内容为上述图像数据对应标签张量
+	y := gorgonia.NewMatrix(g, tensor.Float64, gorgonia.WithShape(common.CNNBatchSize,
+		common.MNISTNumLabels), gorgonia.WithName("y"))
+	w0:= gorgonia.NewTensor(g, tensor.Float64,4, gorgonia.WithValue(w0_val), gorgonia.WithName("w0"))
+	log.Printf(" w0:%v \n", w0)
+	w1 := gorgonia.NewTensor(g, tensor.Float64,4, gorgonia.WithValue(w1_val), gorgonia.WithName("w1"))
+	log.Printf("w1:%v \n", w1)
+	w2 := gorgonia.NewTensor(g, tensor.Float64, 4, gorgonia.WithValue(w2_val), gorgonia.WithName("w2"))
+	log.Printf("w2:%v \n", w2)
+	w3 := gorgonia.NewMatrix(g, tensor.Float64, gorgonia.WithValue(w3_val), gorgonia.WithName("w3"))
+	log.Printf("w3:%v \n", w3)
+	w4 := gorgonia.NewMatrix(g, tensor.Float64, gorgonia.WithValue(w4_val), gorgonia.WithName("w4"))
+	log.Printf("w4:%v \n", w4)
+	cnn := &CNN{
+		G: g,
+		W0: w0,
+		W1: w1,
+		W2: w2,
+		W3: w3,
+		W4: w4,
+		D0: 0.2,
+		D1: 0.2,
+		D2: 0.2,
+		D3: 0.55,
+	}
+	if err := cnn.Fwd(x); err != nil {
+		return nil, err
+	}
+	losses := gorgonia.Must(gorgonia.HadamardProd(cnn.Out, y))
+	cost := gorgonia.Must(gorgonia.Mean(losses))
+	cost = gorgonia.Must(gorgonia.Neg(cost))
+	// 跟踪成本
+	var costVal gorgonia.Value
+	gorgonia.Read(cost, &costVal)
+	// 根据权重矩阵获取成本
+	if _, err := gorgonia.Grad(cost, cnn.Learnables()...); err != nil {
+		return nil, err
+	}
+	//var out gorgonia.Value
+	//rv := gorgonia.Read(cnn.Out, &out)
+	//fwdNet := cnn.G.SubgraphRoots(rv)
+	//vm := gorgonia.NewTapeMachine(fwdNet)
+	//cnn.VM = vm
+	cnn.VMBuild()
+	return cnn, nil
+}
+
+func save(nodes []*gorgonia.Node) error {
+	f, err := os.Create("cnn_weights")
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	enc := gob.NewEncoder(f)
+	for _, node := range nodes {
+		err := enc.Encode(node.Value())
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
