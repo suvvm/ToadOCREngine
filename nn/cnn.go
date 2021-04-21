@@ -67,8 +67,7 @@ func NewCNN(g *gorgonia.ExprGraph) *model.CNN {
 //	cnn *model.CNN			// 卷积神经网络
 //	dataImgs tensor.Tensor	// 训练集图像张量
 //	dataLabs tensor.Tensor	// 训练集标签张量
-//	costVal gorgonia.Value	// 受监控的训练成本
-func CNNTraining(cnn *model.CNN, dataImgs, dataLabs tensor.Tensor, costVal gorgonia.Value) {
+func CNNTraining(cnn *model.CNN, dataImgs, dataLabs tensor.Tensor) {
 	dataSize := dataImgs.Shape()[0]
 	// 表达式网络输入数据x，内容为等候训练或预测的图像数据张量
 	x := gorgonia.NewTensor(cnn.G, tensor.Float64, 4, gorgonia.WithShape(common.CNNBatchSize,
@@ -143,7 +142,10 @@ func CNNTraining(cnn *model.CNN, dataImgs, dataLabs tensor.Tensor, costVal gorgo
 			bar.Increment()
 		}
 		// 输出本次训练信息
-		log.Printf("Epoch %d | cost %v | guess %v", i, costVal, accuracyGuess)
+		log.Printf("Epoch %d | guess %v", i, accuracyGuess)
+	}
+	if err := cnn.Persistence(); err != nil {
+		log.Fatalf("Failed at persistence %v", err)
 	}
 	bar.Finish()
 }
@@ -224,6 +226,7 @@ func CNNTesting(cnn *model.CNN, testData, testLbl tensor.Tensor) {
 // RunCNN 卷积神经网络运行函数
 func RunCNN() {
 	dataImgs, datalabs, testData, testLbl := utils.LoadMNIST()
+	// testData, testLbl, _, _ := utils.LoadMNIST()
 	// 对图像进行ZCA白化
 	//dataZCA, err := utils.ZCA(dataImgs)
 	//if err != nil {
@@ -234,36 +237,46 @@ func RunCNN() {
 	//	log.Fatal(err)
 	//}
 	// 使用卷积神经网络前将图像数据转换为(cnnImgsData, 1, 28, 28) (BHCW)
-	cnnImgsData := dataImgs.Shape()[0]
-	if err := dataImgs.Reshape(cnnImgsData, common.MNISTRawImageChannel,
-		common.MNISTRawImageRows, common.MNISTRawImageCols); err != nil {
-		log.Fatal(err)
-	}
-	// 构造表达式图
-	g := gorgonia.NewGraph()
-	x := gorgonia.NewTensor(g, tensor.Float64, 4, gorgonia.WithShape(common.CNNBatchSize,
-		common.MNISTRawImageChannel, common.MNISTRawImageRows,
-		common.MNISTRawImageCols), gorgonia.WithName("x"))
-	// 表达式网络输入数据y，内容为上述图像数据对应标签张量
-	y := gorgonia.NewMatrix(g, tensor.Float64, gorgonia.WithShape(common.CNNBatchSize,
-		common.MNISTNumLabels), gorgonia.WithName("y"))
-	// 构建卷积神经网络
-	cnn := NewCNN(g)
-	if err := cnn.Fwd(x); err != nil {
-		log.Fatalf("%+v", err)
-	}
-	losses := gorgonia.Must(gorgonia.HadamardProd(cnn.Out, y))
-	cost := gorgonia.Must(gorgonia.Mean(losses))
-	cost = gorgonia.Must(gorgonia.Neg(cost))
-	// 跟踪成本
-	var costVal gorgonia.Value
-	gorgonia.Read(cost, &costVal)
-	// 根据权重矩阵获取成本
-	if _, err := gorgonia.Grad(cost, cnn.Learnables()...); err != nil {
-		log.Fatal(err)
-	}
-	cnn.VMBuild()
+
+
+	//cnnImgsData := dataImgs.Shape()[0]
+	//if err := dataImgs.Reshape(cnnImgsData, common.MNISTRawImageChannel,
+	//	common.MNISTRawImageRows, common.MNISTRawImageCols); err != nil {
+	//	log.Fatal(err)
+	//}
+	//// 构造表达式图
+	//g := gorgonia.NewGraph()
+	//x := gorgonia.NewTensor(g, tensor.Float64, 4, gorgonia.WithShape(common.CNNBatchSize,
+	//	common.MNISTRawImageChannel, common.MNISTRawImageRows,
+	//	common.MNISTRawImageCols), gorgonia.WithName("x"))
+	//// 表达式网络输入数据y，内容为上述图像数据对应标签张量
+	//y := gorgonia.NewMatrix(g, tensor.Float64, gorgonia.WithShape(common.CNNBatchSize,
+	//	common.MNISTNumLabels), gorgonia.WithName("y"))
+	//// 构建卷积神经网络
+	//cnn := NewCNN(g)
+	//if err := cnn.Fwd(x); err != nil {
+	//	log.Fatalf("%+v", err)
+	//}
+	//losses := gorgonia.Must(gorgonia.HadamardProd(cnn.Out, y))
+	//cost := gorgonia.Must(gorgonia.Mean(losses))
+	//cost = gorgonia.Must(gorgonia.Neg(cost))
+	//// 跟踪成本
+	//var costVal gorgonia.Value
+	//gorgonia.Read(cost, &costVal)
+	//// 根据权重矩阵获取成本
+	//if _, err := gorgonia.Grad(cost, cnn.Learnables()...); err != nil {
+	//	log.Fatal(err)
+	//}
+	//cnn.VMBuild()
+	//defer cnn.VM.Close()
+	//CNNTraining(cnn, dataImgs, datalabs, costVal)
+
+	cnn, err := model.LoadCNNFromSave()
 	defer cnn.VM.Close()
-	CNNTraining(cnn, dataImgs, datalabs, costVal)
+	CNNTraining(cnn, dataImgs, datalabs)
+	if err != nil {
+		log.Fatalf("Unable to load cnn file %v", err)
+	}
+	// cnnLoaded.VMBuild()
 	CNNTesting(cnn, testData, testLbl)
 }
