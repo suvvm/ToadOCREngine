@@ -158,6 +158,11 @@ func CNNTraining(cnn *model.CNN, dataImgs, dataLabs tensor.Tensor) {
 //	testData tensor.Tensor	// 测试集图像张量
 //	testLbl tensor.Tensor	// 测试集标签张量
 func CNNTesting(cnn *model.CNN, testData, testLbl tensor.Tensor) {
+	var out gorgonia.Value
+	rv := gorgonia.Read(cnn.Out, &out)
+	fwdNet := cnn.G.SubgraphRoots(rv)
+	vm := gorgonia.NewTapeMachine(fwdNet)
+	cnn.VM = vm
 	var correct, total, errcount float64
 	var testBs int
 	var err error

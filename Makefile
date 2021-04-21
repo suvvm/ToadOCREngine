@@ -7,14 +7,15 @@ help: Makefile
 	@echo "Available Commands:"
 	@sed -n 's/^##//p' $< | column -t -s ':' |  sed -e 's/^/ /'
 
-## build: Compile the binary.
+## build: Compile the binary. Copy binary product to current directory
 build:
 	@sh build.sh
 
-## run: Build and run
+## run: Build and run, run command `train cnn` by default
 run: build
 	@sh output/bootstrap.sh
 
 ## clean: Clean output
 clean:
 	rm -rf output
+	rm -f toad_ocr_engine

@@ -103,8 +103,12 @@ func SNNTraining(snn *model.SNN, dataImgs ,dataZCA, datalabs tensor.Tensor, epoc
 		log.Printf("epoch:%d\tcosts:%v", i, utils.Avg(costs))
 		utils.ShuffleX(nat)
 		costs = costs[:0]
+		snn.TrainEpoch += 1
 	}
 	bar.Finish()
+	if err = snn.Persistence(); err != nil {
+		log.Fatalf("Save snn weights err:%v", err)
+	}
 	log.Printf("End Training!")
 }
 
@@ -183,19 +187,11 @@ func RunSNN() {
 		//	common.MNISTRawImageRows * common.MNISTRawImageCols, 10)
 		// 训练SNN10次
 		SNNTraining(snn, dataImgs, dataZCA, datalabs, 10)
-		snn.TrainEpoch += 10
-		if err = snn.Persistence(); err != nil {
-			log.Fatalf("Save snn weights err:%v", err)
-		}
 	}
 	snn, err := model.LoadSNNFromSave()
 	if err != nil {
 		log.Fatalf("Failed at load snn weights %v", err)
 	}
 	SNNTraining(snn, dataImgs, dataZCA, datalabs, 10)
-	snn.TrainEpoch += 10
-	if err = snn.Persistence(); err != nil {
-		log.Fatalf("Save snn weights err:%v", err)
-	}
 	SNNTesting(snn, testData, testLbl)
 }
