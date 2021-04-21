@@ -1,6 +1,8 @@
 package main
 
-import "suvvm.work/toad_ocr_engine/nn"
+import (
+	"suvvm.work/toad_ocr_engine/nn"
+)
 
 //func main() {
 //	// 读取图像文件
@@ -71,5 +73,14 @@ import "suvvm.work/toad_ocr_engine/nn"
 //}
 
 func main() {
-	nn.RunCNN()
+	//if len(os.Args) == 0 {
+	//	log.Printf("Please provide command parameters\n Running with `help` to show currently supported commands")
+	//	return
+	//}
+	//cmd := os.Args[0]
+	//if cmd == "help" {
+	//	log.Printf("")
+	//	return
+	//}
+	nn.RunSNN()
 }
