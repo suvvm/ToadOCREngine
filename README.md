@@ -42,18 +42,26 @@
 
 ## 运行指令
 
-​	详见Makefile
+- 构建: 详见makefile
+
+- 运行: 构建后运行 ./toad_ocr_engine help 查看具体操作指令
 
 ## 产物结构
 
 ```
-+ output
-	- bin 				# 存放构建二进制产物
-	- images			# 存放运行过程中产出的图像文件
-	+ resource		# 存放资源文件
-		- mnist			# mnist训练集与测试集
-		- script		# bootstrap.sh 样本
-	bootstrap.sh	# 启动运行脚本
+├── output
+│   ├── bin
+│   │   └── toad_ocr_engine                 # 二进制产物
+│   ├── images                              # 存放运行过程中产出的图像文件
+│   ├── resource                            # 资源文件
+│       ├── mnist                           # mnist训练集与测试集
+│       │   ├── t10k-images-idx3-ubyte
+│       │   ├── t10k-labels-idx1-ubyte
+│       │   ├── train-images-idx3-ubyte
+│       │   └── train-labels-idx1-ubyte
+│       └── script
+│           └── bootstrap.sh
+└── bootstrap.sh                            # 启动运行脚本
 ```
 
 
