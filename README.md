@@ -54,14 +54,15 @@
 │   │   └── toad_ocr_engine                 # 二进制产物
 │   ├── images                              # 存放运行过程中产出的图像文件
 │   ├── resource                            # 资源文件
-│       ├── mnist                           # mnist训练集与测试集
-│       │   ├── t10k-images-idx3-ubyte
-│       │   ├── t10k-labels-idx1-ubyte
-│       │   ├── train-images-idx3-ubyte
-│       │   └── train-labels-idx1-ubyte
-│       └── script
-│           └── bootstrap.sh
-└── bootstrap.sh                            # 启动运行脚本
+│   │   ├── mnist                           # mnist训练集与测试集
+│   │   │   ├── t10k-images-idx3-ubyte
+│   │   │   ├── t10k-labels-idx1-ubyte
+│   │   │   ├── train-images-idx3-ubyte
+│   │   │   └── train-labels-idx1-ubyte
+│   │   └── script
+│   │       └── bootstrap.sh
+│   └── bootstrap.sh                        # 启动运行脚本
+└── toad_ocr_engine                         # 二进制产物
 ```
 
 
