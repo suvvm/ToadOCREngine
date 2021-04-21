@@ -82,5 +82,5 @@ func main() {
 	//	log.Printf("")
 	//	return
 	//}
-	nn.RunSNN()
+	nn.RunCNN()
 }
