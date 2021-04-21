@@ -136,7 +136,7 @@ func (cnn *CNN) VMBuild() gorgonia.VM {
 }
 
 func (cnn *CNN) Persistence() error {
-	if err := save([]*gorgonia.Node{cnn.W0, cnn.W1, cnn.W2, cnn.W3, cnn.W4}); err != nil {
+	if err := cnnSave([]*gorgonia.Node{cnn.W0, cnn.W1, cnn.W2, cnn.W3, cnn.W4}); err != nil {
 		return err
 	}
 	return nil
@@ -221,7 +221,7 @@ func LoadCNNFromSave() (*CNN, error) {
 	return cnn, nil
 }
 
-func save(nodes []*gorgonia.Node) error {
+func cnnSave(nodes []*gorgonia.Node) error {
 	f, err := os.Create("cnn_weights")
 	if err != nil {
 		return err

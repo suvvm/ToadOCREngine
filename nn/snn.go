@@ -2,14 +2,17 @@ package nn
 
 import (
 	"fmt"
+	"github.com/cheggaaa/pb"
 	"gorgonia.org/tensor"
 	"gorgonia.org/tensor/native"
 	"gorgonia.org/vecf64"
 	"log"
+	"os"
 	"suvvm.work/toad_ocr_engine/common"
 	"suvvm.work/toad_ocr_engine/method"
 	"suvvm.work/toad_ocr_engine/model"
 	"suvvm.work/toad_ocr_engine/utils"
+	"time"
 )
 
 // NewSNN 构建新的基础神经网络
@@ -73,7 +76,13 @@ func SNNTraining(snn *model.SNN, dataImgs ,dataZCA, datalabs tensor.Tensor, epoc
 	// 构造成本数组
 	costs := make([]float64, 0, dataZCA.Shape()[0])
 	// 训练基础神经网络epochNum次
+	bar := pb.New(dataZCA.Shape()[0])
+	bar.SetRefreshRate(time.Second)
+	bar.SetMaxWidth(common.BarMaxWidth)
 	for i := 0; i < epochNum; i++ {
+		bar.Prefix(fmt.Sprintf("Epoch %d", i))
+		bar.Set(0)
+		bar.Start()
 		dataZCAShape := dataZCA.Shape()
 		var image, label tensor.Tensor
 		var err error
@@ -89,11 +98,16 @@ func SNNTraining(snn *model.SNN, dataImgs ,dataZCA, datalabs tensor.Tensor, epoc
 				log.Fatalf("Training error:%v", err)
 			}
 			costs = append(costs, cost)
-
+			bar.Increment()
 		}
 		log.Printf("epoch:%d\tcosts:%v", i, utils.Avg(costs))
 		utils.ShuffleX(nat)
 		costs = costs[:0]
+		snn.TrainEpoch += 1
+	}
+	bar.Finish()
+	if err = snn.Persistence(); err != nil {
+		log.Fatalf("Save snn weights err:%v", err)
 	}
 	log.Printf("End Training!")
 }
@@ -111,6 +125,12 @@ func SNNTesting(snn *model.SNN, dataImgs, datalabs tensor.Tensor) {
 	var correct, total float64
 	var image, label tensor.Tensor
 	var predicted, errCnt int
+	bar := pb.New(shape[0])
+	bar.SetRefreshRate(time.Second)
+	bar.SetMaxWidth(common.BarMaxWidth)
+	bar.Prefix("Testing")
+	bar.Set(0)
+	bar.Start()
 	for i := 0; i < shape[0]; i++ {
 		if image, err = dataImgs.Slice(model.MakeRS(i, i + 1)); err != nil {
 			log.Fatalf("Unable to slice image %d", i)
@@ -134,6 +154,44 @@ func SNNTesting(snn *model.SNN, dataImgs, datalabs tensor.Tensor) {
 			errCnt++
 		}
 		total++
+		bar.Increment()
 	}
+	bar.Finish()
 	log.Printf("Correct/Totals: %v/%v = %1.3f\n", correct, total, correct/total)
+}
+
+func RunSNN() {
+	dataImgs, datalabs, testData, testLbl := utils.LoadMNIST()
+	// 对图像进行ZCA白化
+	dataZCA, err := utils.ZCA(dataImgs)
+	if err != nil {
+		log.Fatalf("err:%v", err)
+	}
+	_, err = os.Stat("snn_weights")
+	if err != nil && !os.IsExist(err){
+		//// 可视化一个由10 * 10个原始图像组成的图像
+		//if err = method.Visualize(dataImgs, common.MNISTUnitRows, common.MNISTUnitCols, "image.png"); err != nil {
+		//	log.Fatalf("visualize error:%v", err)
+		//}
+		//// 可视化上方图像的ZCA白化版本
+		//if err = method.Visualize(dataZCA, common.MNISTUnitRows, common.MNISTUnitCols, "imageZCA.png"); err != nil {
+		//	log.Fatalf("visualize error:%v", err)
+		//}
+		// 构建一个三层基础神经网络
+		// 输入层神经元common.MNISTRawImageRows * common.MNISTRawImageCols个
+		// 隐层神经元common.MNISTRawImageRows * common.MNISTRawImageCols个
+		// 输出层神经元10个
+		snn := NewSNN(common.MNISTRawImageRows * common.MNISTRawImageCols,
+			100, 10)
+		//snn := nn.NewSNN(common.MNISTRawImageRows * common.MNISTRawImageCols,
+		//	common.MNISTRawImageRows * common.MNISTRawImageCols, 10)
+		// 训练SNN10次
+		SNNTraining(snn, dataImgs, dataZCA, datalabs, 10)
+	}
+	snn, err := model.LoadSNNFromSave()
+	if err != nil {
+		log.Fatalf("Failed at load snn weights %v", err)
+	}
+	SNNTraining(snn, dataImgs, dataZCA, datalabs, 10)
+	SNNTesting(snn, testData, testLbl)
 }

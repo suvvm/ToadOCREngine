@@ -7,6 +7,7 @@ import (
 	"gorgonia.org/tensor"
 	"gorgonia.org/vecf64"
 	"log"
+	"os"
 	"suvvm.work/toad_ocr_engine/common"
 	"suvvm.work/toad_ocr_engine/model"
 	"suvvm.work/toad_ocr_engine/utils"
@@ -157,6 +158,11 @@ func CNNTraining(cnn *model.CNN, dataImgs, dataLabs tensor.Tensor) {
 //	testData tensor.Tensor	// 测试集图像张量
 //	testLbl tensor.Tensor	// 测试集标签张量
 func CNNTesting(cnn *model.CNN, testData, testLbl tensor.Tensor) {
+	var out gorgonia.Value
+	rv := gorgonia.Read(cnn.Out, &out)
+	fwdNet := cnn.G.SubgraphRoots(rv)
+	vm := gorgonia.NewTapeMachine(fwdNet)
+	cnn.VM = vm
 	var correct, total, errcount float64
 	var testBs int
 	var err error
@@ -226,51 +232,52 @@ func CNNTesting(cnn *model.CNN, testData, testLbl tensor.Tensor) {
 // RunCNN 卷积神经网络运行函数
 func RunCNN() {
 	dataImgs, datalabs, testData, testLbl := utils.LoadMNIST()
-	// testData, testLbl, _, _ := utils.LoadMNIST()
-	// 对图像进行ZCA白化
 	//dataZCA, err := utils.ZCA(dataImgs)
 	//if err != nil {
 	//	log.Fatalf("err:%v", err)
 	//}
+	_, err := os.Stat("cnn_weights")
+	if err != nil && !os.IsExist(err){
+		cnnImgsData := dataImgs.Shape()[0]
+		if err := dataImgs.Reshape(cnnImgsData, common.MNISTRawImageChannel,
+			common.MNISTRawImageRows, common.MNISTRawImageCols); err != nil {
+			log.Fatal(err)
+		}
+		// 构造表达式图
+		g := gorgonia.NewGraph()
+		x := gorgonia.NewTensor(g, tensor.Float64, 4, gorgonia.WithShape(common.CNNBatchSize,
+			common.MNISTRawImageChannel, common.MNISTRawImageRows,
+			common.MNISTRawImageCols), gorgonia.WithName("x"))
+		// 表达式网络输入数据y，内容为上述图像数据对应标签张量
+		y := gorgonia.NewMatrix(g, tensor.Float64, gorgonia.WithShape(common.CNNBatchSize,
+			common.MNISTNumLabels), gorgonia.WithName("y"))
+		// 构建卷积神经网络
+		cnn := NewCNN(g)
+		if err := cnn.Fwd(x); err != nil {
+			log.Fatalf("%+v", err)
+		}
+		losses := gorgonia.Must(gorgonia.HadamardProd(cnn.Out, y))
+		cost := gorgonia.Must(gorgonia.Mean(losses))
+		cost = gorgonia.Must(gorgonia.Neg(cost))
+		// 跟踪成本
+		var costVal gorgonia.Value
+		gorgonia.Read(cost, &costVal)
+		// 根据权重矩阵获取成本
+		if _, err := gorgonia.Grad(cost, cnn.Learnables()...); err != nil {
+			log.Fatal(err)
+		}
+		cnn.VMBuild()
+		defer cnn.VM.Close()
+		CNNTraining(cnn, dataImgs, datalabs)
+	}
+	// testData, testLbl, _, _ := utils.LoadMNIST()
+	// 对图像进行ZCA白化
+
 	//nat, err := native.MatrixF64(dataZCA.(*tensor.Dense))
 	//if err != nil {
 	//	log.Fatal(err)
 	//}
 	// 使用卷积神经网络前将图像数据转换为(cnnImgsData, 1, 28, 28) (BHCW)
-
-
-	//cnnImgsData := dataImgs.Shape()[0]
-	//if err := dataImgs.Reshape(cnnImgsData, common.MNISTRawImageChannel,
-	//	common.MNISTRawImageRows, common.MNISTRawImageCols); err != nil {
-	//	log.Fatal(err)
-	//}
-	//// 构造表达式图
-	//g := gorgonia.NewGraph()
-	//x := gorgonia.NewTensor(g, tensor.Float64, 4, gorgonia.WithShape(common.CNNBatchSize,
-	//	common.MNISTRawImageChannel, common.MNISTRawImageRows,
-	//	common.MNISTRawImageCols), gorgonia.WithName("x"))
-	//// 表达式网络输入数据y，内容为上述图像数据对应标签张量
-	//y := gorgonia.NewMatrix(g, tensor.Float64, gorgonia.WithShape(common.CNNBatchSize,
-	//	common.MNISTNumLabels), gorgonia.WithName("y"))
-	//// 构建卷积神经网络
-	//cnn := NewCNN(g)
-	//if err := cnn.Fwd(x); err != nil {
-	//	log.Fatalf("%+v", err)
-	//}
-	//losses := gorgonia.Must(gorgonia.HadamardProd(cnn.Out, y))
-	//cost := gorgonia.Must(gorgonia.Mean(losses))
-	//cost = gorgonia.Must(gorgonia.Neg(cost))
-	//// 跟踪成本
-	//var costVal gorgonia.Value
-	//gorgonia.Read(cost, &costVal)
-	//// 根据权重矩阵获取成本
-	//if _, err := gorgonia.Grad(cost, cnn.Learnables()...); err != nil {
-	//	log.Fatal(err)
-	//}
-	//cnn.VMBuild()
-	//defer cnn.VM.Close()
-	//CNNTraining(cnn, dataImgs, datalabs, costVal)
-
 	cnn, err := model.LoadCNNFromSave()
 	defer cnn.VM.Close()
 	CNNTraining(cnn, dataImgs, datalabs)

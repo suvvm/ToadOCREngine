@@ -1,9 +1,12 @@
 package model
 
 import (
+	"encoding/gob"
 	"github.com/pkg/errors"
 	"gorgonia.org/tensor"
 	"gorgonia.org/vecf64"
+	"log"
+	"os"
 	"suvvm.work/toad_ocr_engine/utils"
 )
 
@@ -22,6 +25,7 @@ type SNN struct {
 	Final *tensor.Dense
 	B0 float64
 	B1 float64
+	TrainEpoch int
 }
 
 // Predict 前向传播函数
@@ -165,4 +169,59 @@ func (snn *SNN) Train(x, y tensor.Tensor, learnRate float64) (float64, error) {
 		return tensor.Add(snn.Hidden, dcost_dhidden, tensor.UseUnsafe())
 	})
 	return cost, m.err
+}
+
+func LoadSNNFromSave() (*SNN, error) {
+	f, err := os.Open("snn_weights")
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	dec := gob.NewDecoder(f)
+	var hidden, final *tensor.Dense
+	var trainEpoch int
+	log.Println("decoding hidden")
+	if err = dec.Decode(&hidden); err != nil {
+		return nil, err
+	}
+	log.Println("decoding final")
+	if err = dec.Decode(&final); err != nil {
+		return nil, err
+	}
+	log.Println("decoding trainEpoch")
+	if err = dec.Decode(&trainEpoch); err != nil {
+		return nil, err
+	}
+	return &SNN{
+		Hidden: hidden,
+		Final: final,
+		TrainEpoch: trainEpoch,
+	}, nil
+}
+
+func (snn *SNN) Persistence() error {
+	if err := snnSave([]*tensor.Dense{snn.Hidden, snn.Final}, snn.TrainEpoch); err != nil {
+		return err
+	}
+	return nil
+}
+
+func snnSave(nodes []*tensor.Dense, trainEpoch int) error {
+	f, err := os.Create("snn_weights")
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	enc := gob.NewEncoder(f)
+	for _, node := range nodes {
+		err := enc.Encode(node)
+		if err != nil {
+			return err
+		}
+	}
+	err = enc.Encode(trainEpoch)
+	if err != nil {
+		return err
+	}
+	return nil
 }

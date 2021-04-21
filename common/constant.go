@@ -17,5 +17,27 @@ const (
 	BarMaxWidth       = 100        // 进度条最大宽度
 
 	CNNBatchSize      = 100		   // CNN每个训练批次包含的原始图像数量
-	CNNEpoch          = 100        // CNN训练阶段数量
+	CNNEpoch          = 10        // CNN训练阶段数量
+
+	CmdTrain          = "train"
+	CmdTest           = "test"
+	CmdReset          = "reset"
+	CmdList           = "nnlist"
+	CmdHelp           = "help"
+
+	CnnName           = "cnn"
+	SnnName           = "snn"
 )
+
+var CMDMap = map[string]bool {
+	CmdTrain: true,
+	CmdTest: true,
+	CmdReset: true,
+	CmdList: true,
+	CmdHelp: true,
+}
+
+var NNMap = map[string]bool {
+	CnnName: true,
+	SnnName: true,
+}

@@ -1,7 +1,7 @@
 RUN_NAME="toad_ocr_engine"
 
 if [ -f "./output/bin/${RUN_NAME}" ]; then
-    ./output/bin/${RUN_NAME}
+    ./output/bin/${RUN_NAME} train cnn
 else
   echo "./output/bin/${RUN_NAME} not found! please build first"
 fi
