@@ -17,7 +17,7 @@ const (
 	BarMaxWidth       = 100        // 进度条最大宽度
 
 	CNNBatchSize      = 100		   // CNN每个训练批次包含的原始图像数量
-	CNNEpoch          = 10        // CNN训练阶段数量
+	CNNEpoch          = 100        // CNN训练阶段数量
 
 	CmdTrain          = "train"
 	CmdTest           = "test"
