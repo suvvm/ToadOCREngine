@@ -175,14 +175,20 @@ func PixelWeight(px byte) float64 {
 	return pixelVal
 }
 
-// LoadMNIST 读取MNIST文件为张量
+// LoadNIST 读取MNIST文件为张量
 //
-//返回
+// 入参
+//	trainImgPath string		// 训练集图像数据地址
+//	trainLabelsPath string	// 训练集标签数据地址
+//	testImgPath string		// 测试集图像数据地址
+//	testLabelsPath string	// 测试集标签数据地址
+//
+// 返回
 //	dataImgs tensor.Tensor	// 训练集图像
 //	dataLabs tensor.Tensor	// 训练集标签
 //	testData tensor.Tensor	// 测试集图像
 //	testLabs tensor.Tensor	// 测试集标签
-func LoadMNIST(trainImgPath, trainLabelsPath, testImgPath, testLabelsPath string)  (dataImgs, dataLabs, testData, testLabs tensor.Tensor) {
+func LoadNIST(trainImgPath, trainLabelsPath, testImgPath, testLabelsPath string)  (dataImgs, dataLabs, testData, testLabs tensor.Tensor) {
 	// 读取图像文件
 	reader, err := os.Open(trainImgPath)
 	if err != nil {

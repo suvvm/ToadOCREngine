@@ -49,11 +49,11 @@ func NewSNN(input, hidden, output int) *model.SNN {
 //	datalabs tensor.Tensor	// 标签张量
 func SNNTrainingTest(dataImgs ,dataZCA, datalabs tensor.Tensor) {
 	// 构建一个三层基础神经网络
-	// 输入层神经元common.RawImageRows * common.MNISTRawImageCols个
-	// 隐层神经元common.RawImageRows * common.MNISTRawImageCols个
+	// 输入层神经元common.RawImageRows * common.RawImageCols个
+	// 隐层神经元common.RawImageRows * common.RawImageCols个
 	// 输出层神经元10个
 	snn := NewSNN(common.RawImageRows* common.RawImageCols,
-		common.RawImageRows* common.RawImageCols, 10)
+		common.RawImageRows * common.RawImageCols, common.EMNISTByClassNumLabels)
 	SNNTraining(snn, dataImgs, dataZCA, datalabs, 5)
 }
 
@@ -161,8 +161,8 @@ func SNNTesting(snn *model.SNN, dataImgs, datalabs tensor.Tensor) {
 }
 
 func RunSNN() {
-	dataImgs, datalabs, testData, testLbl := utils.LoadMNIST(common.MNSITTrainImagesPath,
-		common.MNISTTrainLabelsPath, common.MNISTTestImagesPath, common.MNISTTestLabelsPath)
+	dataImgs, datalabs, testData, testLbl := utils.LoadNIST(common.EMNSITByClassTrainImagesPath,
+		common.EMNISTByClassTrainLabelsPath, common.EMNISTByClassTestImagesPath, common.EMNISTByClassTestLabelsPath)
 	// 对图像进行ZCA白化
 	dataZCA, err := utils.ZCA(dataImgs)
 	if err != nil {
@@ -183,16 +183,16 @@ func RunSNN() {
 		// 隐层神经元common.RawImageRows * common.MNISTRawImageCols个
 		// 输出层神经元10个
 		snn := NewSNN(common.RawImageRows* common.RawImageCols,
-			100, 10)
+			common.RawImageRows * common.RawImageCols, common.EMNISTByClassNumLabels)
 		//snn := nn.NewSNN(common.RawImageRows * common.RawImageCols,
 		//	common.RawImageRows * common.RawImageCols, 10)
 		// 训练SNN10次
-		SNNTraining(snn, dataImgs, dataZCA, datalabs, 10)
+		SNNTraining(snn, dataImgs, dataZCA, datalabs, common.SNNEpoch)
 	}
 	snn, err := model.LoadSNNFromSave()
 	if err != nil {
 		log.Fatalf("Failed at load snn weights %v", err)
 	}
-	SNNTraining(snn, dataImgs, dataZCA, datalabs, 10)
+	SNNTraining(snn, dataImgs, dataZCA, datalabs, common.SNNEpoch)
 	SNNTesting(snn, testData, testLbl)
 }

@@ -22,7 +22,7 @@ import (
 // 第2层将输出一个秩为4的张量，为了方便执行乘法在第3层将其重构为一个秩为2的张量
 // w3 第3层权重(128 * 3 * 3, 625)
 // 第4层进行输出解码得到结果概率
-// w4 第4层权重(625, 10)
+// w4 第4层权重(625, 62)
 // d0～d3前三层20%的激活随机归零,最后一层55%的激活随机归零
 //
 // 入参
@@ -46,7 +46,7 @@ func NewCNN(g *gorgonia.ExprGraph) *model.CNN {
 		gorgonia.WithShape(128 * 3 * 3, 625), gorgonia.WithName("w3"),
 		gorgonia.WithInit(gorgonia.GlorotN(1.0)))
 	w4 := gorgonia.NewMatrix(g, tensor.Float64,
-		gorgonia.WithShape(625, 10), gorgonia.WithName("w4"),
+		gorgonia.WithShape(625, common.EMNISTByClassNumLabels), gorgonia.WithName("w4"),
 		gorgonia.WithInit(gorgonia.GlorotN(1.0)))
 	return &model.CNN{
 		G: g,
@@ -231,8 +231,8 @@ func CNNTesting(cnn *model.CNN, testData, testLbl tensor.Tensor) {
 
 // RunCNN 卷积神经网络运行函数
 func RunCNN() {
-	dataImgs, datalabs, testData, testLbl := utils.LoadMNIST(common.MNSITTrainImagesPath,
-		common.MNISTTrainLabelsPath, common.MNISTTestImagesPath, common.MNISTTestLabelsPath)
+	dataImgs, datalabs, testData, testLbl := utils.LoadNIST(common.EMNSITByClassTrainImagesPath,
+		common.EMNISTByClassTrainLabelsPath, common.EMNISTByClassTestImagesPath, common.EMNISTByClassTestLabelsPath)
 	//dataZCA, err := utils.ZCA(dataImgs)
 	//if err != nil {
 	//	log.Fatalf("err:%v", err)
@@ -251,7 +251,7 @@ func RunCNN() {
 			common.RawImageCols), gorgonia.WithName("x"))
 		// 表达式网络输入数据y，内容为上述图像数据对应标签张量
 		y := gorgonia.NewMatrix(g, tensor.Float64, gorgonia.WithShape(common.CNNBatchSize,
-			common.MNISTNumLabels), gorgonia.WithName("y"))
+			common.EMNISTByClassNumLabels), gorgonia.WithName("y"))
 		// 构建卷积神经网络
 		cnn := NewCNN(g)
 		if err := cnn.Fwd(x); err != nil {
@@ -271,7 +271,7 @@ func RunCNN() {
 		defer cnn.VM.Close()
 		CNNTraining(cnn, dataImgs, datalabs)
 	}
-	// testData, testLbl, _, _ := utils.LoadMNIST()
+	// testData, testLbl, _, _ := utils.LoadNIST()
 	// 对图像进行ZCA白化
 
 	//nat, err := native.MatrixF64(dataZCA.(*tensor.Dense))
