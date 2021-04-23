@@ -53,7 +53,8 @@ func main() {
 			nn.RunSNN()
 		}
 	} else if cmd == common.CmdTest {	// 测试命令
-		_, _, testData, testLbl := utils.LoadMNIST()
+		_, _, testData, testLbl := utils.LoadMNIST(common.MNSITTrainImagesPath,
+			common.MNISTTrainLabelsPath, common.MNISTTestImagesPath, common.MNISTTestLabelsPath)
 		if cmdnn == common.SnnName {
 			_, err 	:= os.Stat("snn_weights")
 			if err != nil && !os.IsExist(err){

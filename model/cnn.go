@@ -172,8 +172,8 @@ func LoadCNNFromSave() (*CNN, error) {
 	}
 	g := gorgonia.NewGraph()
 	x := gorgonia.NewTensor(g, tensor.Float64, 4, gorgonia.WithShape(common.CNNBatchSize,
-		common.MNISTRawImageChannel, common.MNISTRawImageRows,
-		common.MNISTRawImageCols), gorgonia.WithName("x"))
+		common.RawImageChannel, common.RawImageRows,
+		common.RawImageCols), gorgonia.WithName("x"))
 	// 表达式网络输入数据y，内容为上述图像数据对应标签张量
 	y := gorgonia.NewMatrix(g, tensor.Float64, gorgonia.WithShape(common.CNNBatchSize,
 		common.MNISTNumLabels), gorgonia.WithName("y"))
