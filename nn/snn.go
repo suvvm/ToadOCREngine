@@ -72,26 +72,23 @@ func SNNTraining(snn *model.SNN, dataImgs ,dataZCA, datalabs tensor.Tensor, epoc
 	if err != nil {
 		log.Fatalf("err:%v", err)
 	}
-
-	tmpDataSize := 50000
-
-
+	// tmpDataSize := 50000
 	// 构造成本数组
 	costs := make([]float64, 0, dataZCA.Shape()[0])
 	// 训练基础神经网络epochNum次
-	// bar := pb.New(dataZCA.Shape()[0])
-	bar := pb.New(tmpDataSize)
+	bar := pb.New(dataZCA.Shape()[0])
+	// bar := pb.New(tmpDataSize)
 	bar.SetRefreshRate(time.Second)
 	bar.SetMaxWidth(common.BarMaxWidth)
 	for i := 0; i < epochNum; i++ {
 		bar.Prefix(fmt.Sprintf("Epoch %d", i))
 		bar.Set(0)
 		bar.Start()
-		// dataZCAShape := dataZCA.Shape()
+		dataZCAShape := dataZCA.Shape()
 		var image, label tensor.Tensor
 		var err error
-		// for j := 0; j < dataZCAShape[0]; j++ {
-		for j := 0; j < tmpDataSize; j++ {
+		for j := 0; j < dataZCAShape[0]; j++ {
+		// for j := 0; j < tmpDataSize; j++ {
 			if image, err = dataImgs.Slice(model.MakeRS(j, j + 1)); err != nil {
 				log.Fatalf("Unable to slice image %d", j)
 			}
@@ -125,21 +122,20 @@ func SNNTraining(snn *model.SNN, dataImgs ,dataZCA, datalabs tensor.Tensor, epoc
 //	dataImgs tensor.Tensor	// 测试图像张量
 //	datalabs tensor.Tensor	// 测试图像标签
 func SNNTesting(snn *model.SNN, dataImgs, datalabs tensor.Tensor) {
-	// shape := dataImgs.Shape()
+	shape := dataImgs.Shape()
 	var err error
 	var correct, total float64
 	var image, label tensor.Tensor
 	var predicted, errCnt int
-	tmpDataSize := 50000
-	bar := pb.New(tmpDataSize)
-	// bar := pb.New(shape[0])
+	// bar := pb.New(tmpDataSize)
+	bar := pb.New(shape[0])
 	bar.SetRefreshRate(time.Second)
 	bar.SetMaxWidth(common.BarMaxWidth)
 	bar.Prefix("Testing")
 	bar.Set(0)
 	bar.Start()
-	for i := 0; i < tmpDataSize; i++ {
-	// for i := 0; i < shape[0]; i++ {
+	// for i := 0; i < tmpDataSize; i++ {
+	for i := 0; i < shape[0]; i++ {
 		if image, err = dataImgs.Slice(model.MakeRS(i, i + 1)); err != nil {
 			log.Fatalf("Unable to slice image %d", i)
 		}
