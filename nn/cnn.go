@@ -75,7 +75,7 @@ func CNNTraining(cnn *model.CNN, dataImgs, dataLabs tensor.Tensor) {
 		common.RawImageChannel, common.RawImageRows,common.RawImageCols), gorgonia.WithName("x"))
 	// 表达式网络输入数据y，内容为上述图像数据对应标签张量
 	y := gorgonia.NewMatrix(cnn.G, tensor.Float64, gorgonia.WithShape(common.CNNBatchSize,
-		common.MNISTNumLabels), gorgonia.WithName("y"))
+		common.EMNISTByClassNumLabels), gorgonia.WithName("y"))
 	var err error
 	// 创建求解器
 	solver := gorgonia.NewRMSPropSolver(gorgonia.WithBatchSize(float64(common.CNNBatchSize)))
@@ -122,7 +122,7 @@ func CNNTraining(cnn *model.CNN, dataImgs, dataLabs tensor.Tensor) {
 				log.Fatalf("Failed at epoch  %d: %v", i, err)
 			}
 			outputData := cnn.OutVal.Data().([]float64)	// 获取预测信息
-			outputLab := tensor.New(tensor.WithShape(common.CNNBatchSize, common.MNISTNumLabels), tensor.WithBacking(outputData))
+			outputLab := tensor.New(tensor.WithShape(common.CNNBatchSize, common.EMNISTByClassNumLabels), tensor.WithBacking(outputData))
 			// 准确率统计
 			for j := 0; j < yVal.Shape()[0]; j++ {
 				yRowT, _ :=  yVal.Slice(model.MakeRS(j, j + 1))

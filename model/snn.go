@@ -56,7 +56,7 @@ func (snn *SNN) Predict(data tensor.Tensor) (int, error) {
 	return vecf64.Argmax(pred.Data().([]float64)), nil
 }
 
-// SNNTrain 基础神经网络单次训练函数
+// Train 基础神经网络单次训练函数
 // 进行单次训练并得到本次训练的成本（误差平方和对预测结果求偏导数）
 //
 // 入参

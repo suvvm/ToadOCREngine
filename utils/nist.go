@@ -208,7 +208,7 @@ func LoadNIST(trainImgPath, trainLabelsPath, testImgPath, testLabelsPath string)
 	log.Printf("number of imgs:%d, number of labs:%d", len(images), len(labels))
 	// 将图像与标签转化为张量
 	dataImgs = PrepareX(images)
-	dataLabs = PrepareY(labels, common.MNISTNumLabels)
+	dataLabs = PrepareY(labels, common.EMNISTByClassNumLabels)
 	reader, err = os.Open(testImgPath)
 	if err != nil {
 		log.Fatalf("err:%s", err)
@@ -226,6 +226,6 @@ func LoadNIST(trainImgPath, trainLabelsPath, testImgPath, testLabelsPath string)
 		log.Fatalf("err:%v", err)
 	}
 	testData = PrepareX(testImages)
-	testLabs = PrepareY(testlabels, common.MNISTNumLabels)
+	testLabs = PrepareY(testlabels, common.EMNISTByClassNumLabels)
 	return
 }
