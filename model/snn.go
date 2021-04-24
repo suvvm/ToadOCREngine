@@ -7,13 +7,14 @@ import (
 	"gorgonia.org/vecf64"
 	"log"
 	"os"
+	"suvvm.work/toad_ocr_engine/common"
 	"suvvm.work/toad_ocr_engine/utils"
 )
 
 // SNN 基础神经网络结构
 // 输入层是common.MNISTRawImageRows * common.MNISTRawImageCols个float64型切片
 // 前向馈入(矩阵惩罚后执行激活函数)形成隐层
-// 隐层继续馈入形成输出层（MNIST为10个float64组成的向量，就是标签的热独编码）
+// 隐层继续馈入形成输出层（MNIST为62个float64组成的向量，就是标签的热独编码）
 //
 // 参数
 //	Hidden *tensor.Dense	// 输入层与隐层之间的权重矩阵
@@ -55,7 +56,7 @@ func (snn *SNN) Predict(data tensor.Tensor) (int, error) {
 	return vecf64.Argmax(pred.Data().([]float64)), nil
 }
 
-// SNNTrain 基础神经网络单次训练函数
+// Train 基础神经网络单次训练函数
 // 进行单次训练并得到本次训练的成本（误差平方和对预测结果求偏导数）
 //
 // 入参
@@ -75,7 +76,7 @@ func (snn *SNN) Train(x, y tensor.Tensor, learnRate float64) (float64, error) {
 	})
 	// 调整标签张量为一维张量
 	m.Do(func() (tensor.Tensor, error) {
-		err := y.Reshape(10, 1)
+		err := y.Reshape(common.EMNISTByClassNumLabels, 1)
 		return y, err
 	})
 	// 隐层权重矩阵乘输入数据

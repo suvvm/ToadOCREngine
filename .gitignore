@@ -1,3 +1,6 @@
 /.idea
 /output
 .DS_Store
+/resources/mnist
+/resources/emnist
+toad_ocr_engine

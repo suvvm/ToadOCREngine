@@ -23,7 +23,7 @@ type CNN struct {
 	VM gorgonia.VM
 }
 
-// fwd 前向传播函数
+// Fwd 前向传播函数
 // 将图层包装在图层结构中执行每层激活
 // 第0、1层，使用卷积神经网络的标准卷积stride =（1，1）和padding =（1，1）进行卷积
 // 给定一个(N,1,28,28)的张量，卷积后得到一个(N,32,28,28)的张量
@@ -172,11 +172,11 @@ func LoadCNNFromSave() (*CNN, error) {
 	}
 	g := gorgonia.NewGraph()
 	x := gorgonia.NewTensor(g, tensor.Float64, 4, gorgonia.WithShape(common.CNNBatchSize,
-		common.MNISTRawImageChannel, common.MNISTRawImageRows,
-		common.MNISTRawImageCols), gorgonia.WithName("x"))
+		common.RawImageChannel, common.RawImageRows,
+		common.RawImageCols), gorgonia.WithName("x"))
 	// 表达式网络输入数据y，内容为上述图像数据对应标签张量
 	y := gorgonia.NewMatrix(g, tensor.Float64, gorgonia.WithShape(common.CNNBatchSize,
-		common.MNISTNumLabels), gorgonia.WithName("y"))
+		common.EMNISTByClassNumLabels), gorgonia.WithName("y"))
 	w0:= gorgonia.NewTensor(g, tensor.Float64,4, gorgonia.WithValue(w0_val), gorgonia.WithName("w0"))
 	log.Printf(" w0:%v \n", w0)
 	w1 := gorgonia.NewTensor(g, tensor.Float64,4, gorgonia.WithValue(w1_val), gorgonia.WithName("w1"))

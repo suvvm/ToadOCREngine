@@ -22,7 +22,7 @@ import (
 // 第2层将输出一个秩为4的张量，为了方便执行乘法在第3层将其重构为一个秩为2的张量
 // w3 第3层权重(128 * 3 * 3, 625)
 // 第4层进行输出解码得到结果概率
-// w4 第4层权重(625, 10)
+// w4 第4层权重(625, 62)
 // d0～d3前三层20%的激活随机归零,最后一层55%的激活随机归零
 //
 // 入参
@@ -46,7 +46,7 @@ func NewCNN(g *gorgonia.ExprGraph) *model.CNN {
 		gorgonia.WithShape(128 * 3 * 3, 625), gorgonia.WithName("w3"),
 		gorgonia.WithInit(gorgonia.GlorotN(1.0)))
 	w4 := gorgonia.NewMatrix(g, tensor.Float64,
-		gorgonia.WithShape(625, 10), gorgonia.WithName("w4"),
+		gorgonia.WithShape(625, common.EMNISTByClassNumLabels), gorgonia.WithName("w4"),
 		gorgonia.WithInit(gorgonia.GlorotN(1.0)))
 	return &model.CNN{
 		G: g,
@@ -72,10 +72,10 @@ func CNNTraining(cnn *model.CNN, dataImgs, dataLabs tensor.Tensor) {
 	dataSize := dataImgs.Shape()[0]
 	// 表达式网络输入数据x，内容为等候训练或预测的图像数据张量
 	x := gorgonia.NewTensor(cnn.G, tensor.Float64, 4, gorgonia.WithShape(common.CNNBatchSize,
-		common.MNISTRawImageChannel, common.MNISTRawImageRows,common.MNISTRawImageCols), gorgonia.WithName("x"))
+		common.RawImageChannel, common.RawImageRows,common.RawImageCols), gorgonia.WithName("x"))
 	// 表达式网络输入数据y，内容为上述图像数据对应标签张量
 	y := gorgonia.NewMatrix(cnn.G, tensor.Float64, gorgonia.WithShape(common.CNNBatchSize,
-		common.MNISTNumLabels), gorgonia.WithName("y"))
+		common.EMNISTByClassNumLabels), gorgonia.WithName("y"))
 	var err error
 	// 创建求解器
 	solver := gorgonia.NewRMSPropSolver(gorgonia.WithBatchSize(float64(common.CNNBatchSize)))
@@ -112,8 +112,8 @@ func CNNTraining(cnn *model.CNN, dataImgs, dataLabs tensor.Tensor) {
 			if yVal, err = dataLabs.Slice(model.MakeRS(start, end)); err != nil {
 				log.Fatal("Unable to slice y")
 			}
-			if err = xVal.(*tensor.Dense).Reshape(common.CNNBatchSize, common.MNISTRawImageChannel,
-				common.MNISTRawImageRows, common.MNISTRawImageCols); err != nil {
+			if err = xVal.(*tensor.Dense).Reshape(common.CNNBatchSize, common.RawImageChannel,
+				common.RawImageRows, common.RawImageCols); err != nil {
 				log.Fatalf("Unable to reshape %v", err)
 			}
 			gorgonia.Let(x, xVal)
@@ -122,7 +122,7 @@ func CNNTraining(cnn *model.CNN, dataImgs, dataLabs tensor.Tensor) {
 				log.Fatalf("Failed at epoch  %d: %v", i, err)
 			}
 			outputData := cnn.OutVal.Data().([]float64)	// 获取预测信息
-			outputLab := tensor.New(tensor.WithShape(common.CNNBatchSize, common.MNISTNumLabels), tensor.WithBacking(outputData))
+			outputLab := tensor.New(tensor.WithShape(common.CNNBatchSize, common.EMNISTByClassNumLabels), tensor.WithBacking(outputData))
 			// 准确率统计
 			for j := 0; j < yVal.Shape()[0]; j++ {
 				yRowT, _ :=  yVal.Slice(model.MakeRS(j, j + 1))
@@ -168,8 +168,8 @@ func CNNTesting(cnn *model.CNN, testData, testLbl tensor.Tensor) {
 	var err error
 	testBs = 100	// 测试集每批次测试数量
 	// 表达式网络输入数据x，内容为等候训练或预测的图像数据张量
-	x := gorgonia.NewTensor(cnn.G, tensor.Float64, 4, gorgonia.WithShape(testBs, common.MNISTRawImageChannel,
-		common.MNISTRawImageRows, common.MNISTRawImageCols), gorgonia.WithName("x"))
+	x := gorgonia.NewTensor(cnn.G, tensor.Float64, 4, gorgonia.WithShape(testBs, common.RawImageChannel,
+		common.RawImageRows, common.RawImageCols), gorgonia.WithName("x"))
 	shape := testData.Shape()
 	testDataSize := shape[0]
 	batches := testDataSize / testBs
@@ -200,8 +200,8 @@ func CNNTesting(cnn *model.CNN, testData, testLbl tensor.Tensor) {
 		if yVal, err = testLbl.Slice(model.MakeRS(start, end)); err != nil {
 			log.Fatal("Unable to slice y")
 		}
-		if err = xVal.(*tensor.Dense).Reshape(testBs, common.MNISTRawImageChannel,
-			common.MNISTRawImageRows, common.MNISTRawImageCols); err != nil {
+		if err = xVal.(*tensor.Dense).Reshape(testBs, common.RawImageChannel,
+			common.RawImageRows, common.RawImageCols); err != nil {
 			log.Fatalf("Unable to reshape %v", err)
 		}
 		gorgonia.Let(x, xVal)
@@ -231,7 +231,8 @@ func CNNTesting(cnn *model.CNN, testData, testLbl tensor.Tensor) {
 
 // RunCNN 卷积神经网络运行函数
 func RunCNN() {
-	dataImgs, datalabs, testData, testLbl := utils.LoadMNIST()
+	dataImgs, datalabs, testData, testLbl := utils.LoadNIST(common.EMNSITByClassTrainImagesPath,
+		common.EMNISTByClassTrainLabelsPath, common.EMNISTByClassTestImagesPath, common.EMNISTByClassTestLabelsPath)
 	//dataZCA, err := utils.ZCA(dataImgs)
 	//if err != nil {
 	//	log.Fatalf("err:%v", err)
@@ -239,18 +240,18 @@ func RunCNN() {
 	_, err := os.Stat("cnn_weights")
 	if err != nil && !os.IsExist(err){
 		cnnImgsData := dataImgs.Shape()[0]
-		if err := dataImgs.Reshape(cnnImgsData, common.MNISTRawImageChannel,
-			common.MNISTRawImageRows, common.MNISTRawImageCols); err != nil {
+		if err := dataImgs.Reshape(cnnImgsData, common.RawImageChannel,
+			common.RawImageRows, common.RawImageCols); err != nil {
 			log.Fatal(err)
 		}
 		// 构造表达式图
 		g := gorgonia.NewGraph()
 		x := gorgonia.NewTensor(g, tensor.Float64, 4, gorgonia.WithShape(common.CNNBatchSize,
-			common.MNISTRawImageChannel, common.MNISTRawImageRows,
-			common.MNISTRawImageCols), gorgonia.WithName("x"))
+			common.RawImageChannel, common.RawImageRows,
+			common.RawImageCols), gorgonia.WithName("x"))
 		// 表达式网络输入数据y，内容为上述图像数据对应标签张量
 		y := gorgonia.NewMatrix(g, tensor.Float64, gorgonia.WithShape(common.CNNBatchSize,
-			common.MNISTNumLabels), gorgonia.WithName("y"))
+			common.EMNISTByClassNumLabels), gorgonia.WithName("y"))
 		// 构建卷积神经网络
 		cnn := NewCNN(g)
 		if err := cnn.Fwd(x); err != nil {
@@ -270,7 +271,7 @@ func RunCNN() {
 		defer cnn.VM.Close()
 		CNNTraining(cnn, dataImgs, datalabs)
 	}
-	// testData, testLbl, _, _ := utils.LoadMNIST()
+	// testData, testLbl, _, _ := utils.LoadNIST()
 	// 对图像进行ZCA白化
 
 	//nat, err := native.MatrixF64(dataZCA.(*tensor.Dense))

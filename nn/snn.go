@@ -9,7 +9,6 @@ import (
 	"log"
 	"os"
 	"suvvm.work/toad_ocr_engine/common"
-	"suvvm.work/toad_ocr_engine/method"
 	"suvvm.work/toad_ocr_engine/model"
 	"suvvm.work/toad_ocr_engine/utils"
 	"time"
@@ -49,11 +48,11 @@ func NewSNN(input, hidden, output int) *model.SNN {
 //	datalabs tensor.Tensor	// 标签张量
 func SNNTrainingTest(dataImgs ,dataZCA, datalabs tensor.Tensor) {
 	// 构建一个三层基础神经网络
-	// 输入层神经元common.MNISTRawImageRows * common.MNISTRawImageCols个
-	// 隐层神经元common.MNISTRawImageRows * common.MNISTRawImageCols个
+	// 输入层神经元common.RawImageRows * common.RawImageCols个
+	// 隐层神经元common.RawImageRows * common.RawImageCols个
 	// 输出层神经元10个
-	snn := NewSNN(common.MNISTRawImageRows * common.MNISTRawImageCols,
-		common.MNISTRawImageRows * common.MNISTRawImageCols, 10)
+	snn := NewSNN(common.RawImageRows* common.RawImageCols,
+		common.RawImageRows * common.RawImageCols, common.EMNISTByClassNumLabels)
 	SNNTraining(snn, dataImgs, dataZCA, datalabs, 5)
 }
 
@@ -73,20 +72,26 @@ func SNNTraining(snn *model.SNN, dataImgs ,dataZCA, datalabs tensor.Tensor, epoc
 	if err != nil {
 		log.Fatalf("err:%v", err)
 	}
+
+	tmpDataSize := 50000
+
+
 	// 构造成本数组
 	costs := make([]float64, 0, dataZCA.Shape()[0])
 	// 训练基础神经网络epochNum次
-	bar := pb.New(dataZCA.Shape()[0])
+	// bar := pb.New(dataZCA.Shape()[0])
+	bar := pb.New(tmpDataSize)
 	bar.SetRefreshRate(time.Second)
 	bar.SetMaxWidth(common.BarMaxWidth)
 	for i := 0; i < epochNum; i++ {
 		bar.Prefix(fmt.Sprintf("Epoch %d", i))
 		bar.Set(0)
 		bar.Start()
-		dataZCAShape := dataZCA.Shape()
+		// dataZCAShape := dataZCA.Shape()
 		var image, label tensor.Tensor
 		var err error
-		for j := 0; j < dataZCAShape[0]; j++ {
+		// for j := 0; j < dataZCAShape[0]; j++ {
+		for j := 0; j < tmpDataSize; j++ {
 			if image, err = dataImgs.Slice(model.MakeRS(j, j + 1)); err != nil {
 				log.Fatalf("Unable to slice image %d", j)
 			}
@@ -120,18 +125,21 @@ func SNNTraining(snn *model.SNN, dataImgs ,dataZCA, datalabs tensor.Tensor, epoc
 //	dataImgs tensor.Tensor	// 测试图像张量
 //	datalabs tensor.Tensor	// 测试图像标签
 func SNNTesting(snn *model.SNN, dataImgs, datalabs tensor.Tensor) {
-	shape := dataImgs.Shape()
+	// shape := dataImgs.Shape()
 	var err error
 	var correct, total float64
 	var image, label tensor.Tensor
 	var predicted, errCnt int
-	bar := pb.New(shape[0])
+	tmpDataSize := 50000
+	bar := pb.New(tmpDataSize)
+	// bar := pb.New(shape[0])
 	bar.SetRefreshRate(time.Second)
 	bar.SetMaxWidth(common.BarMaxWidth)
 	bar.Prefix("Testing")
 	bar.Set(0)
 	bar.Start()
-	for i := 0; i < shape[0]; i++ {
+	for i := 0; i < tmpDataSize; i++ {
+	// for i := 0; i < shape[0]; i++ {
 		if image, err = dataImgs.Slice(model.MakeRS(i, i + 1)); err != nil {
 			log.Fatalf("Unable to slice image %d", i)
 		}
@@ -147,10 +155,10 @@ func SNNTesting(snn *model.SNN, dataImgs, datalabs tensor.Tensor) {
 		if predicted == label {
 			correct++
 		} else {
-			if err = method.Visualize(image, 1, 1,
-				fmt.Sprintf("%d_label:%d_predicted:%d.png", i, label, predicted)); err != nil {
-				log.Fatalf("visualize error:%v", err)
-			}
+			//if err = method.Visualize(image, 1, 1,
+			//	fmt.Sprintf("%d_label:%d_predicted:%d.png", i, label, predicted)); err != nil {
+			//	log.Fatalf("visualize error:%v", err)
+			//}
 			errCnt++
 		}
 		total++
@@ -161,7 +169,8 @@ func SNNTesting(snn *model.SNN, dataImgs, datalabs tensor.Tensor) {
 }
 
 func RunSNN() {
-	dataImgs, datalabs, testData, testLbl := utils.LoadMNIST()
+	dataImgs, datalabs, testData, testLbl := utils.LoadNIST(common.EMNSITByClassTrainImagesPath,
+		common.EMNISTByClassTrainLabelsPath, common.EMNISTByClassTestImagesPath, common.EMNISTByClassTestLabelsPath)
 	// 对图像进行ZCA白化
 	dataZCA, err := utils.ZCA(dataImgs)
 	if err != nil {
@@ -178,20 +187,20 @@ func RunSNN() {
 		//	log.Fatalf("visualize error:%v", err)
 		//}
 		// 构建一个三层基础神经网络
-		// 输入层神经元common.MNISTRawImageRows * common.MNISTRawImageCols个
-		// 隐层神经元common.MNISTRawImageRows * common.MNISTRawImageCols个
+		// 输入层神经元common.RawImageRows * common.MNISTRawImageCols个
+		// 隐层神经元common.RawImageRows * common.MNISTRawImageCols个
 		// 输出层神经元10个
-		snn := NewSNN(common.MNISTRawImageRows * common.MNISTRawImageCols,
-			100, 10)
-		//snn := nn.NewSNN(common.MNISTRawImageRows * common.MNISTRawImageCols,
-		//	common.MNISTRawImageRows * common.MNISTRawImageCols, 10)
+		snn := NewSNN(common.RawImageRows* common.RawImageCols,
+			common.RawImageRows * common.RawImageCols, common.EMNISTByClassNumLabels)
+		//snn := nn.NewSNN(common.RawImageRows * common.RawImageCols,
+		//	common.RawImageRows * common.RawImageCols, 10)
 		// 训练SNN10次
-		SNNTraining(snn, dataImgs, dataZCA, datalabs, 10)
+		SNNTraining(snn, dataImgs, dataZCA, datalabs, common.SNNEpoch)
 	}
 	snn, err := model.LoadSNNFromSave()
 	if err != nil {
 		log.Fatalf("Failed at load snn weights %v", err)
 	}
-	SNNTraining(snn, dataImgs, dataZCA, datalabs, 10)
+	SNNTraining(snn, dataImgs, dataZCA, datalabs, common.SNNEpoch)
 	SNNTesting(snn, testData, testLbl)
 }
