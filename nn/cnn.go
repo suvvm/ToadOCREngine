@@ -144,6 +144,7 @@ func CNNTraining(cnn *model.CNN, dataImgs, dataLabs tensor.Tensor) {
 		}
 		// 输出本次训练信息
 		log.Printf("Epoch %d | guess %v", i, accuracyGuess)
+		cnn.TrainEpoch += 1
 	}
 	if err := cnn.Persistence(); err != nil {
 		log.Fatalf("Failed at persistence %v", err)
@@ -158,6 +159,8 @@ func CNNTraining(cnn *model.CNN, dataImgs, dataLabs tensor.Tensor) {
 //	testData tensor.Tensor	// 测试集图像张量
 //	testLbl tensor.Tensor	// 测试集标签张量
 func CNNTesting(cnn *model.CNN, testData, testLbl tensor.Tensor) {
+	log.Printf("CNN train times:%v", cnn.TrainEpoch)
+	log.Printf("Start testing...")
 	var out gorgonia.Value
 	rv := gorgonia.Read(cnn.Out, &out)
 	fwdNet := cnn.G.SubgraphRoots(rv)
