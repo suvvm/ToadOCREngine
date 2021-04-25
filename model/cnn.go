@@ -21,6 +21,7 @@ type CNN struct {
 	Out *gorgonia.Node
 	OutVal gorgonia.Value
 	VM gorgonia.VM
+	TrainEpoch int
 }
 
 // Fwd 前向传播函数
@@ -136,7 +137,7 @@ func (cnn *CNN) VMBuild() gorgonia.VM {
 }
 
 func (cnn *CNN) Persistence() error {
-	if err := cnnSave([]*gorgonia.Node{cnn.W0, cnn.W1, cnn.W2, cnn.W3, cnn.W4}); err != nil {
+	if err := cnnSave([]*gorgonia.Node{cnn.W0, cnn.W1, cnn.W2, cnn.W3, cnn.W4}, cnn.TrainEpoch); err != nil {
 		return err
 	}
 	return nil
@@ -150,6 +151,7 @@ func LoadCNNFromSave() (*CNN, error) {
 	defer f.Close()
 	dec := gob.NewDecoder(f)
 	var w0_val, w1_val, w2_val, w3_val, w4_val *tensor.Dense
+	var trainEpoch int
 	log.Println("decoding w0")
 	if err = dec.Decode(&w0_val); err != nil {
 		return nil, err
@@ -168,6 +170,10 @@ func LoadCNNFromSave() (*CNN, error) {
 	}
 	log.Println("decoding w4")
 	if err = dec.Decode(&w4_val); err != nil {
+		return nil, err
+	}
+	log.Println("decoding trainEpoch")
+	if err = dec.Decode(&trainEpoch); err != nil {
 		return nil, err
 	}
 	g := gorgonia.NewGraph()
@@ -198,6 +204,7 @@ func LoadCNNFromSave() (*CNN, error) {
 		D1: 0.2,
 		D2: 0.2,
 		D3: 0.55,
+		TrainEpoch: trainEpoch,
 	}
 	if err := cnn.Fwd(x); err != nil {
 		return nil, err
@@ -221,7 +228,7 @@ func LoadCNNFromSave() (*CNN, error) {
 	return cnn, nil
 }
 
-func cnnSave(nodes []*gorgonia.Node) error {
+func cnnSave(nodes []*gorgonia.Node, trainEpoch int) error {
 	f, err := os.Create("cnn_weights")
 	if err != nil {
 		return err
@@ -233,6 +240,10 @@ func cnnSave(nodes []*gorgonia.Node) error {
 		if err != nil {
 			return err
 		}
+	}
+	err = enc.Encode(trainEpoch)
+	if err != nil {
+		return err
 	}
 	return nil
 }

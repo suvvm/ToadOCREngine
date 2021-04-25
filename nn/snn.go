@@ -122,6 +122,8 @@ func SNNTraining(snn *model.SNN, dataImgs ,dataZCA, datalabs tensor.Tensor, epoc
 //	dataImgs tensor.Tensor	// 测试图像张量
 //	datalabs tensor.Tensor	// 测试图像标签
 func SNNTesting(snn *model.SNN, dataImgs, datalabs tensor.Tensor) {
+	log.Printf("SNN train times:%v", snn.TrainEpoch)
+	log.Printf("Start testing...")
 	shape := dataImgs.Shape()
 	var err error
 	var correct, total float64
