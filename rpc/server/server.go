@@ -21,15 +21,24 @@ package main
 
 import (
 	"context"
+	"flag"
 	"log"
 	"net"
+	"os"
+	"os/signal"
+	"suvvm.work/toad_ocr_engine/rpc"
+	"syscall"
+	"time"
 
 	"google.golang.org/grpc"
 	pb "suvvm.work/toad_ocr_engine/rpc/idl"
 )
 
-const (
-	port = ":50051"
+var (
+	serv = flag.String("service", "hello_service", "service name")
+	host = flag.String("host", "localhost", "listening host")
+	port = flag.String("port", "18886", "listening port")
+	reg  = flag.String("reg", "http://localhost:2379", "register etcd address")
 )
 
 // server is used to implement helloworld.GreeterServer.
@@ -44,10 +53,22 @@ func (s *server) SayHello(ctx context.Context, in *pb.HelloRequest) (*pb.HelloRe
 }
 
 func main() {
-	lis, err := net.Listen("tcp", port)
+	lis, err := net.Listen("tcp", ":" + *port)
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
+	err = rpc.Register(*reg, *serv, *host, *port, time.Second*10, 15)
+	if err != nil {
+		panic(err)
+	}
+	ch := make(chan os.Signal, 1)
+	signal.Notify(ch, syscall.SIGTERM, syscall.SIGINT, syscall.SIGHUP, syscall.SIGQUIT)
+	go func() {
+		s := <-ch
+		log.Printf("receive signal '%v'", s)
+		rpc.UnRegister()
+		os.Exit(1)
+	}()
 	s := grpc.NewServer()
 	pb.RegisterToadOcrServer(s, &server{})
 	if err := s.Serve(lis); err != nil {

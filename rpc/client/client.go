@@ -21,8 +21,12 @@ package main
 
 import (
 	"context"
+	"flag"
+	"google.golang.org/grpc/balancer/roundrobin"
+	"google.golang.org/grpc/resolver"
 	"log"
-	"os"
+	"strconv"
+	"suvvm.work/toad_ocr_engine/rpc"
 	"time"
 
 	"google.golang.org/grpc"
@@ -34,25 +38,29 @@ const (
 	defaultName = "world"
 )
 
+var (
+	svc = flag.String("service", "hello_service", "service name")
+	reg = flag.String("reg", "http://localhost:2379", "register etcd address")
+)
+
 func main() {
-	// Set up a connection to the server.
-	conn, err := grpc.Dial(address, grpc.WithInsecure(), grpc.WithBlock())
+	flag.Parse()
+	r := rpc.NewResolver(*reg, *svc)
+	resolver.Register(r)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	conn, err := grpc.DialContext(ctx, r.Scheme()+"://authority/"+*svc, grpc.WithInsecure(), grpc.WithBalancerName(roundrobin.Name), grpc.WithBlock())
+	defer cancel()
 	if err != nil {
-		log.Fatalf("did not connect: %v", err)
+		panic(err)
 	}
 	defer conn.Close()
-	c := pb.NewToadOcrClient(conn)
 
-	// Contact the server and print out its response.
-	name := defaultName
-	if len(os.Args) > 1 {
-		name = os.Args[1]
+	ticker := time.NewTicker(1000 * time.Millisecond)
+	for t := range ticker.C {
+		client := pb.NewToadOcrClient(conn)
+		resp, err := client.SayHello(context.Background(), &pb.HelloRequest{Name: "world " + strconv.Itoa(t.Second())})
+		if err == nil {
+			log.Printf("%v: Reply is %s\n", t, resp.Message)
+		}
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
-	r, err := c.SayHello(ctx, &pb.HelloRequest{Name: name})
-	if err != nil {
-		log.Fatalf("could not greet: %v", err)
-	}
-	log.Printf("Greeting: %s", r.GetMessage())
 }
