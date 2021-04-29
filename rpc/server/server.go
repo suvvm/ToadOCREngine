@@ -20,7 +20,6 @@
 package main
 
 import (
-	"context"
 	"flag"
 	"log"
 	"net"
@@ -41,17 +40,6 @@ var (
 	reg  = flag.String("reg", "http://localhost:2379", "register etcd address")
 )
 
-// server is used to implement helloworld.GreeterServer.
-type server struct {
-	pb.UnimplementedToadOcrServer
-}
-
-// SayHello implements helloworld.GreeterServer
-func (s *server) SayHello(ctx context.Context, in *pb.HelloRequest) (*pb.HelloReply, error) {
-	log.Printf("Received: %v", in.GetName())
-	return &pb.HelloReply{Message: "Hello " + in.GetName()}, nil
-}
-
 func main() {
 	lis, err := net.Listen("tcp", ":" + *port)
 	if err != nil {
@@ -70,7 +58,7 @@ func main() {
 		os.Exit(1)
 	}()
 	s := grpc.NewServer()
-	pb.RegisterToadOcrServer(s, &server{})
+	pb.RegisterToadOcrServer(s, &rpc.Server{})
 	if err := s.Serve(lis); err != nil {
 		log.Fatalf("failed to serve: %v", err)
 	}
