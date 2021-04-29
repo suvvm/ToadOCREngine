@@ -40,7 +40,7 @@ message HelloReply {
 
 message PredictRequest {
   string net_flag = 1;
-  repeated float image = 2;
+  repeated double image = 2;
 }
 
 message PredictReply {

@@ -24,9 +24,14 @@ import (
 	"flag"
 	"google.golang.org/grpc/balancer/roundrobin"
 	"google.golang.org/grpc/resolver"
+	"gorgonia.org/tensor"
 	"log"
-	"strconv"
+	"os"
+	"suvvm.work/toad_ocr_engine/common"
+	"suvvm.work/toad_ocr_engine/method"
+	"suvvm.work/toad_ocr_engine/model"
 	"suvvm.work/toad_ocr_engine/rpc"
+	"suvvm.work/toad_ocr_engine/utils"
 	"time"
 
 	"google.golang.org/grpc"
@@ -55,12 +60,45 @@ func main() {
 	}
 	defer conn.Close()
 
-	ticker := time.NewTicker(1000 * time.Millisecond)
+	reader, err := os.Open(common.MNISTTestImagesPath)
+	if err != nil {
+		log.Fatalf("err:%s", err)
+	}
+	testImages, err := utils.ReadImageFile(reader)
+	if err != nil {
+		log.Fatal(err)
+	}
+	rows := len(testImages)	// 矩阵宽度
+	cols := len(testImages[0])	// 矩阵高度
+	// 创建矩阵的支撑平面切片，tensor会复用当前切片的空间
+	supportSlice := make([]float64, 0, rows * cols)
+	for i := 0; i < rows; i++ {	// 复制缩放后的像素切片进入矩阵平面切片
+		for j := 0; j < len(testImages[i]); j++ {
+			supportSlice = append(supportSlice, utils.PixelWeight(testImages[i][j]))
+		}
+	}
+	var images tensor.Tensor
+	images = tensor.New(tensor.WithShape(rows, cols), tensor.WithBacking(supportSlice))
+	var oneimg tensor.Tensor
+
+	if oneimg, err = images.Slice(model.MakeRS(5, 6)); err != nil {
+		log.Fatalf("Unable to slice image")
+	}
+	log.Printf("row %v", rows)
+	log.Printf("col %v", cols)
+	log.Printf("dims %v", oneimg.Dims())
+	log.Printf("shap %v", oneimg.Shape())
+
+	err = method.Visualize(oneimg, 1, 1, "rpc_image.png")
+	if err != nil {
+		log.Printf("client visualize err:%v", err)
+	}
+	ticker := time.NewTicker(5000 * time.Millisecond)
 	for t := range ticker.C {
 		client := pb.NewToadOcrClient(*conn)
-		resp, err := client.SayHello(context.Background(), &pb.HelloRequest{Name: "world " + strconv.Itoa(t.Second())})
+		resp, err := client.Predict(context.Background(), &pb.PredictRequest{Image: oneimg.Data().([]float64)})
 		if err == nil {
-			log.Printf("%v: Reply is %s\n", t, resp.Message)
+			log.Printf("%v: Msg is %s\nCode is %s\nLab is %s", t, resp.Msg, resp.Code, resp.Label)
 		}
 	}
 }
