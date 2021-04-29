@@ -26,7 +26,7 @@ require (
 	google.golang.org/grpc v1.26.0
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v0.0.0-20200910201057-6591123024b3 // indirect
 	google.golang.org/protobuf v1.26.0
-	gorgonia.org/gorgonia v0.9.15
-	gorgonia.org/tensor v0.9.14
+	gorgonia.org/gorgonia v0.9.17
+	gorgonia.org/tensor v0.9.19
 	gorgonia.org/vecf64 v0.9.0
 )
