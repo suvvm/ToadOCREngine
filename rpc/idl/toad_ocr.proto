@@ -25,6 +25,7 @@ package idl;
 service ToadOcr {
   // Sends a greeting
   rpc SayHello (HelloRequest) returns (HelloReply) {}
+  rpc Predict (PredictRequest) returns (PredictReply) {}
 }
 
 // The request message containing the user's name.
@@ -35,4 +36,15 @@ message HelloRequest {
 // The response message containing the greetings
 message HelloReply {
   string message = 1;
+}
+
+message PredictRequest {
+  string net_flag = 1;
+  repeated float image = 2;
+}
+
+message PredictReply {
+  string code = 1;
+  string msg = 2;
+  string label = 3;
 }

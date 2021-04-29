@@ -57,7 +57,7 @@ func main() {
 
 	ticker := time.NewTicker(1000 * time.Millisecond)
 	for t := range ticker.C {
-		client := pb.NewToadOcrClient(conn)
+		client := pb.NewToadOcrClient(*conn)
 		resp, err := client.SayHello(context.Background(), &pb.HelloRequest{Name: "world " + strconv.Itoa(t.Second())})
 		if err == nil {
 			log.Printf("%v: Reply is %s\n", t, resp.Message)
