@@ -19,3 +19,7 @@ run: build
 clean:
 	rm -rf output
 	rm -f toad_ocr_engine
+
+## generate: generate idl code
+generate:
+	@sh idl_generate.sh

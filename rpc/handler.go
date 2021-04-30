@@ -20,7 +20,7 @@ var (
 	snn *model.SNN
 )
 
-func init() {
+func initNN() {
 	var err error
 	snn, err = model.LoadSNNFromSave()
 	if err != nil {

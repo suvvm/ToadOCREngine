@@ -57,3 +57,7 @@ if [ -n "$GOPATH" ];then
 else
 	echo "GOPATH is needed!"
 fi
+
+cd ..
+chmod +x idl_generate.sh
+sh idl_generate.sh

@@ -6,6 +6,7 @@ import (
 	"suvvm.work/toad_ocr_engine/common"
 	"suvvm.work/toad_ocr_engine/model"
 	"suvvm.work/toad_ocr_engine/nn"
+	"suvvm.work/toad_ocr_engine/rpc"
 	"suvvm.work/toad_ocr_engine/utils"
 )
 
@@ -20,14 +21,23 @@ func main() {
 		log.Printf("Unknow command!\n")
 		return
 	}
-	if cmd == common.CmdHelp {	// 帮助命令
+	if cmd == common.CmdServer {
+		rpc.RunRPCServer()
+		return
+	} else if cmd == common.CmdClient {
+		rpc.RunRpcClient()
+		return
+	} else if cmd == common.CmdHelp {	// 帮助命令
 		log.Printf("\nToad OCR Engine Help:\ntrain: use command `%s` + target neural networks" +
 			" to training networks(use mnist train set when training)\n" +
 			"test: use command `%s` + target neural networks to testing" +
 			" networks(use mnist test set when testing)\n" +
 			"reset: use command `%s` + target neural networks to delete the weights file\n" +
-			"nnlist: use command `%s` to show all supported networks",
-			common.CmdTrain, common.CmdTest, common.CmdReset, common.CmdList)
+			"nnlist: use command `%s` to show all supported networks\n" +
+			"server: use command `%s` to run rpc server(etdc load blance control center must be online)\n" +
+			"client: use command `%s` to run rpc client to sent one snn predict request and one cnn predict request" +
+			"(etdc load blance control center must be online and at least one server registered)",
+			common.CmdTrain, common.CmdTest, common.CmdReset, common.CmdList, common.CmdServer, common.CmdClient)
 		return
 	} else if cmd == common.CmdList {	// 展示支持的神经网络
 		log.Printf("supported networks:\n")
