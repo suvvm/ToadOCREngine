@@ -44,7 +44,7 @@ message PredictRequest {
 }
 
 message PredictReply {
-  string code = 1;
-  string msg = 2;
+  int32 code = 1;
+  string message = 2;
   string label = 3;
 }

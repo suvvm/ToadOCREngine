@@ -293,7 +293,7 @@ func RunCNN() {
 	CNNTesting(cnn, testData, testLbl)
 }
 
-func CnnPredict(image []float64) (string, error) {
+func CnnPredict(cnn *model.CNN, image []float64) (string, error) {
 	image2 := append(image, image...) // 2
 	image2 = append(image2, image2...) // 4
 	image2 = append(image2, image2...) // 8
@@ -305,23 +305,12 @@ func CnnPredict(image []float64) (string, error) {
 	image2 = append(image2, image...) // 98
 	image2 = append(image2, image...) // 99
 	image = append(image2, image...) // 100
-	fmt.Printf("image size %v", len(image))
+	// fmt.Printf("image size %v", len(image))
 	var testData tensor.Tensor
 	testData = tensor.New(tensor.WithShape(100, 784), tensor.WithBacking(image))
 	var err error
-	cnn, err := model.LoadCNNFromSave()
-	defer cnn.VM.Close()
-	if err != nil {
-		log.Fatalf("Unable to load cnn file %v", err)
-	}
-
-	log.Printf("CNN train times:%v", cnn.TrainEpoch)
-	log.Printf("Start testing...")
-	var out gorgonia.Value
-	rv := gorgonia.Read(cnn.Out, &out)
-	fwdNet := cnn.G.SubgraphRoots(rv)
-	vm := gorgonia.NewTapeMachine(fwdNet)
-	cnn.VM = vm
+	// log.Printf("CNN train times:%v", cnn.TrainEpoch)
+	// log.Printf("Start testing...")
 	var testBs int
 	var pre int
 	testBs = 100	// 测试集每批次测试数量
@@ -344,15 +333,21 @@ func CnnPredict(image []float64) (string, error) {
 		// 测试集张量切片
 		var xVal tensor.Tensor
 		if xVal, err = testData.Slice(model.MakeRS(start, end)); err != nil {
-			log.Fatal("Unable to slice x")
+			log.Printf("CnnPredictError!Unable to slice %v", err)
+			return "", err
 		}
 		if err = xVal.(*tensor.Dense).Reshape(testBs, common.RawImageChannel,
 			common.RawImageRows, common.RawImageCols); err != nil {
-			log.Fatalf("Unable to reshape %v", err)
+			log.Printf("CnnPredictError!Unable to reshape %v", err)
+			return "", err
 		}
-		gorgonia.Let(x, xVal)
+		if err = gorgonia.Let(x, xVal); err != nil {
+			log.Printf("CnnPredictError!Failed at Let x %v", err)
+			return "", err
+		}
 		if err = cnn.VM.RunAll(); err != nil {	// 运行表达式网络
-			log.Fatalf("Failed at epoch  %d: %v", b, err)
+			log.Printf("Failed at epoch  %d: %v", b, err)
+			return "", err
 		}
 		// 记录测试结果
 		predicted, _ := cnn.OutVal.(*tensor.Dense).Argmax(1)

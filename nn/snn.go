@@ -205,22 +205,20 @@ func RunSNN() {
 	SNNTesting(snn, testData, testLbl)
 }
 
-func SnnPredict(image []float64) (string, error) {
-	snn, err := model.LoadSNNFromSave()
-	if err != nil {
-		log.Fatalf("Failed at load snn weights %v", err)
-	}
-	log.Printf("image size%v", len(image))
+func SnnPredict(snn *model.SNN ,image []float64) (string, error) {
+	var err error
+	// log.Printf("image size%v", len(image))
 	var dataImgs tensor.Tensor
 	imageData := tensor.New(tensor.WithShape(1, 784), tensor.WithBacking(image))
 	if dataImgs, err = imageData.Slice(model.MakeRS(0, 1)); err != nil {
-		log.Fatalf("Unable to slice image 1")
+		log.Printf("SnnPredictError!Unable to slice image err:%v", err)
+		return "", err
 	}
-
 	var predicted int
-	log.Printf("dim %v shape %v size %v data %v", imageData.Dims(), imageData.Shape(), imageData.Size(), imageData.Data().([]float64))
+	// log.Printf("dim %v shape %v size %v data %v", imageData.Dims(), imageData.Shape(), imageData.Size(), imageData.Data().([]float64))
 	if predicted, err = snn.Predict(dataImgs); err != nil {
-		log.Fatalf("Failed to predict %v", err)
+		log.Printf("SnnPredictError!Failed to predict %v", err)
+		return "", err
 	}
 	// predicted, _ = snn.Predict(imageData)
 	return strconv.Itoa(predicted), nil

@@ -34,17 +34,19 @@ import (
 )
 
 var (
-	serv = flag.String("service", "hello_service", "service name")
+	serv = flag.String("service", "toad_ocr_service", "service name")
 	host = flag.String("host", "localhost", "listening host")
 	port = flag.String("port", "18886", "listening port")
 	reg  = flag.String("reg", "http://localhost:2379", "register etcd address")
 )
 
 func main() {
+	log.Printf("service listen port:%v", port)
 	lis, err := net.Listen("tcp", ":" + *port)
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
+	log.Printf("register rpc server to control center...")
 	err = rpc.Register(*reg, *serv, *host, *port, time.Second*10, 15)
 	if err != nil {
 		panic(err)
@@ -57,8 +59,11 @@ func main() {
 		rpc.UnRegister()
 		os.Exit(1)
 	}()
+	log.Printf("create new toad ocr rpc server...")
 	s := grpc.NewServer()
+	log.Printf("register handler...")
 	pb.RegisterToadOcrServer(s, &rpc.Server{})
+	log.Printf("run toad ocr rpc server...")
 	if err := s.Serve(lis); err != nil {
 		log.Fatalf("failed to serve: %v", err)
 	}

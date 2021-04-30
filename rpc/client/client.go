@@ -44,7 +44,7 @@ const (
 )
 
 var (
-	svc = flag.String("service", "hello_service", "service name")
+	svc = flag.String("service", "toad_ocr_service", "service name")
 	reg = flag.String("reg", "http://localhost:2379", "register etcd address")
 )
 
@@ -93,12 +93,24 @@ func main() {
 	if err != nil {
 		log.Printf("client visualize err:%v", err)
 	}
-	ticker := time.NewTicker(5000 * time.Millisecond)
-	for t := range ticker.C {
-		client := pb.NewToadOcrClient(*conn)
-		resp, err := client.Predict(context.Background(), &pb.PredictRequest{Image: oneimg.Data().([]float64)})
-		if err == nil {
-			log.Printf("%v: Msg is %s\nCode is %s\nLab is %s", t, resp.Msg, resp.Code, resp.Label)
-		}
+
+	client := pb.NewToadOcrClient(*conn)
+	resp, err := client.Predict(context.Background(), &pb.PredictRequest{NetFlag: common.SnnName, Image: oneimg.Data().([]float64)})
+	if err == nil {
+		log.Printf("\nSNN\nMsg is %s\nCode is %d\nLab is %s", resp.Message, resp.Code, resp.Label)
 	}
+
+	resp, err = client.Predict(context.Background(), &pb.PredictRequest{NetFlag: common.CnnName, Image: oneimg.Data().([]float64)})
+	if err == nil {
+		log.Printf("\nCNN\nMsg is %s\nCode is %d\nLab is %s", resp.Message, resp.Code, resp.Label)
+	}
+
+	//ticker := time.NewTicker(5000 * time.Millisecond)
+	//for t := range ticker.C {
+	//	client := pb.NewToadOcrClient(*conn)
+	//	resp, err := client.Predict(context.Background(), &pb.PredictRequest{Image: oneimg.Data().([]float64)})
+	//	if err == nil {
+	//		log.Printf("%v: Msg is %s\nCode is %s\nLab is %s", t, resp.Msg, resp.Code, resp.Label)
+	//	}
+	//}
 }
