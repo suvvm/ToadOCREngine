@@ -4,6 +4,8 @@
 
 ​	ToadOCREngine基于OCR设计领域的基本思路进行设计与编码，本项目意为对国内外关于深度学习发展历程和最新的研究成果进行整理和总结,以此学习与理解人工神经网络及经典的卷积神经网络所涉及到的概念和算法。
 
+​	完成产物训练后，提供至少5台服务器搭建分布式集群部署产物。负载均衡control center使用etcd，并开放gRPC接口
+
 ## 实现理论
 
 研究方法：
@@ -36,8 +38,8 @@
 
 ## 当前进度
 
-​	完成对MNIST的基础神经网络设计，训练10个Epoch，耗时约1小时，MNIST测试集合准确率97%。
-​	完成对MNIST的卷积神经网络设计，训练230个Epoch，耗时约12小时，MNIST测试集合准确率91.9%。
+​	完成对EMNIST的基础神经网络设计，训练40个Epoch，耗时约42小时，MNIST测试集合准确率81%。
+​	完成对MNIST的卷积神经网络设计，训练120个Epoch，耗时约120小时，MNIST测试集合准确率39.1%。
 
 
 ## 运行指令
@@ -60,6 +62,8 @@
 │   │   │   ├── train-images-idx3-ubyte
 │   │   │   └── train-labels-idx1-ubyte
 │   │   └── script
+│   │       ├── etdc_install.sh             # 下载与安装etcd负载均衡集群contral center
+│   │       ├── etdc_start.sh               # 启动contral center
 │   │       └── bootstrap.sh
 │   └── bootstrap.sh                        # 启动运行脚本
 └── toad_ocr_engine                         # 二进制产物
