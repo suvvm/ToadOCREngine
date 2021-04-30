@@ -36,7 +36,8 @@ const (
 	CmdReset          = "reset"
 	CmdList           = "nnlist"
 	CmdHelp           = "help"
-
+	CmdServer         = "server"
+	CmdClient         = "client"
 	CnnName           = "cnn"
 	SnnName           = "snn"
 )
@@ -47,6 +48,8 @@ var CMDMap = map[string]bool {
 	CmdReset: true,
 	CmdList: true,
 	CmdHelp: true,
+	CmdServer: true,
+	CmdClient: true,
 }
 
 var NNMap = map[string]bool {
