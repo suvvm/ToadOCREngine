@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"os"
+	"runtime"
 	"suvvm.work/toad_ocr_engine/common"
 	"suvvm.work/toad_ocr_engine/model"
 	"suvvm.work/toad_ocr_engine/nn"
@@ -58,7 +59,9 @@ func main() {
 	}
 	if cmd == common.CmdTrain {	// 训练命令
 		if cmdnn == common.CnnName {
+			runtime.LockOSThread()
 			nn.RunCNN()
+			runtime.UnlockOSThread()
 		} else if cmdnn == common.SnnName {
 			nn.RunSNN()
 		}

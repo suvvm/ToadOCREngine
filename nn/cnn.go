@@ -89,7 +89,6 @@ func CNNTraining(cnn *model.CNN, dataImgs, dataLabs tensor.Tensor) {
 	bar := pb.New(batches)
 	bar.SetRefreshRate(time.Second)
 	bar.SetMaxWidth(common.BarMaxWidth)
-	runtime.LockOSThread()
 	// 开始分阶段训练，每个阶段训练一遍全部数据集合
 	for i := 0; i < common.CNNEpoch; i++ {
 		// 重制进度条与本阶段准确率信息
@@ -149,7 +148,6 @@ func CNNTraining(cnn *model.CNN, dataImgs, dataLabs tensor.Tensor) {
 		log.Printf("Epoch %d | guess %v", i, accuracyGuess)
 		cnn.TrainEpoch += 1
 	}
-	runtime.UnlockOSThread()
 	if err := cnn.Persistence(); err != nil {
 		log.Fatalf("Failed at persistence %v", err)
 	}
