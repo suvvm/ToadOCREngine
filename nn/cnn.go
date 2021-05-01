@@ -8,6 +8,7 @@ import (
 	"gorgonia.org/vecf64"
 	"log"
 	"os"
+	"runtime"
 	"strconv"
 	"suvvm.work/toad_ocr_engine/common"
 	"suvvm.work/toad_ocr_engine/model"
@@ -88,6 +89,7 @@ func CNNTraining(cnn *model.CNN, dataImgs, dataLabs tensor.Tensor) {
 	bar := pb.New(batches)
 	bar.SetRefreshRate(time.Second)
 	bar.SetMaxWidth(common.BarMaxWidth)
+	runtime.LockOSThread()
 	// 开始分阶段训练，每个阶段训练一遍全部数据集合
 	for i := 0; i < common.CNNEpoch; i++ {
 		// 重制进度条与本阶段准确率信息
@@ -147,6 +149,7 @@ func CNNTraining(cnn *model.CNN, dataImgs, dataLabs tensor.Tensor) {
 		log.Printf("Epoch %d | guess %v", i, accuracyGuess)
 		cnn.TrainEpoch += 1
 	}
+	runtime.UnlockOSThread()
 	if err := cnn.Persistence(); err != nil {
 		log.Fatalf("Failed at persistence %v", err)
 	}
@@ -345,6 +348,7 @@ func CnnPredict(cnn *model.CNN, image []float64) (string, error) {
 			log.Printf("CnnPredictError!Failed at Let x %v", err)
 			return "", err
 		}
+		runtime.LockOSThread()
 		if err = cnn.VM.RunAll(); err != nil {	// 运行表达式网络
 			log.Printf("Failed at epoch  %d: %v", b, err)
 			return "", err

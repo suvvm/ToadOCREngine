@@ -9,7 +9,7 @@ if [ -n "$GOPATH" ];then
   mkdir -p ./output/bin # 创建二进制文件存放目录
   mkdir -p ./output/images # 创建图像文件存放目录
   cp -r ./resources ./output/resources
-  go build -o ./output/bin/${RUN_NAME}
+  go build -tags='CUDA' -o ./output/bin/${RUN_NAME}
   cp ./output/resources/script/bootstrap.sh ./output/bootstrap.sh
   cp ./output/bin/${RUN_NAME} ${RUN_NAME}
   chmod +x ./output/bootstrap.sh
@@ -58,6 +58,6 @@ else
 	echo "GOPATH is needed!"
 fi
 
-cd ..
-chmod +x idl_generate.sh
-sh idl_generate.sh
+#cd ..
+#chmod +x idl_generate.sh
+#sh idl_generate.sh

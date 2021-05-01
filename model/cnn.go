@@ -4,6 +4,7 @@ import (
 	"encoding/gob"
 	"github.com/pkg/errors"
 	"gorgonia.org/gorgonia"
+	nnops "gorgonia.org/gorgonia/ops/nn"
 	"gorgonia.org/tensor"
 	"io/ioutil"
 	"log"
@@ -47,45 +48,45 @@ func (cnn *CNN) Fwd (x *gorgonia.Node) error {
 	log.Printf("x:%v", x)
 	log.Printf("w0:%v", cnn.W0)
 
-	if c0, err = gorgonia.Conv2d(x, cnn.W0, tensor.Shape{3, 3},
+	if c0, err = nnops.Conv2d(x, cnn.W0, tensor.Shape{3, 3},
 	[]int{1, 1}, []int{1, 1}, []int{1, 1}); err != nil {	// 卷积第0层
 		return errors.Wrap(err, "Layer 0 Convolution failed")	// 跟踪错误信息
 	}
-	if a0, err = gorgonia.Rectify(c0); err != nil {	// 第0层激活
+	if a0, err = nnops.Rectify(c0); err != nil {	// 第0层激活
 		return errors.Wrap(err, "Layer 0 activation failed")
 	}
-	if p0, err = gorgonia.MaxPool2D(a0, tensor.Shape{2, 2}, 	// 第0层最大池化
+	if p0, err = nnops.MaxPool2D(a0, tensor.Shape{2, 2}, 	// 第0层最大池化
 	[]int{0, 0}, []int{2, 2}); err != nil {
 		return errors.Wrap(err, "Layer 0 Maxpooling failed")
 	}
-	if l0, err = gorgonia.Dropout(p0, cnn.D0); err != nil {	// 第0层概率退出
+	if l0, err = nnops.Dropout(p0, cnn.D0); err != nil {	// 第0层概率退出
 		return errors.Wrap(err, "Unable to apply a dropout to layer 0")
 	}
 
-	if c1, err = gorgonia.Conv2d(l0, cnn.W1, tensor.Shape{3, 3},	// 第1层卷积
+	if c1, err = nnops.Conv2d(l0, cnn.W1, tensor.Shape{3, 3},	// 第1层卷积
 	[]int{1, 1}, []int{1, 1}, []int{1, 1}); err != nil {
 		return errors.Wrap(err, "Layer 1 Convolution failed")
 	}
-	if a1, err = gorgonia.Rectify(c1); err != nil {	// 第1层激活
+	if a1, err = nnops.Rectify(c1); err != nil {	// 第1层激活
 		return errors.Wrap(err, "Layer 1 activation failed")
 	}
-	if p1, err = gorgonia.MaxPool2D(a1, tensor.Shape{2, 2}, 	// 第1层最大池化
+	if p1, err = nnops.MaxPool2D(a1, tensor.Shape{2, 2}, 	// 第1层最大池化
 	[]int{0, 0}, []int{2, 2}); err != nil {
 		return errors.Wrap(err, "Layer 1 Maxpooling failed")
 	}
-	if l1, err = gorgonia.Dropout(p1, cnn.D1); err != nil {		// 第1层概率退出
+	if l1, err = nnops.Dropout(p1, cnn.D1); err != nil {		// 第1层概率退出
 		return errors.Wrap(err, "Unable to apply a dropout to layer 1")
 	}
 
 
-	if c2, err = gorgonia.Conv2d(l1, cnn.W2, tensor.Shape{3, 3}, 	// 第2层卷积
+	if c2, err = nnops.Conv2d(l1, cnn.W2, tensor.Shape{3, 3}, 	// 第2层卷积
 	[]int{1, 1}, []int{1, 1}, []int{1, 1}); err != nil {
 		return errors.Wrap(err, "Layer 2 Convolution failed")
 	}
-	if a2, err = gorgonia.Rectify(c2); err != nil {	// 第2层激活
+	if a2, err = nnops.Rectify(c2); err != nil {	// 第2层激活
 		return errors.Wrap(err, "Layer 2 activation failed")
 	}
-	if p2, err = gorgonia.MaxPool2D(a2, tensor.Shape{2, 2},	// 第2层最大池化
+	if p2, err = nnops.MaxPool2D(a2, tensor.Shape{2, 2},	// 第2层最大池化
 	[]int{0, 0}, []int{2, 2}); err != nil {
 		return errors.Wrap(err, "Layer 2 Maxpooling failed")
 	}
@@ -97,7 +98,7 @@ func (cnn *CNN) Fwd (x *gorgonia.Node) error {
 		return errors.Wrap(err, "Unable to reshape layer 2")
 	}
 	log.Printf("r2 shape %v", r2.Shape())
-	if l2, err = gorgonia.Dropout(r2, cnn.D2); err != nil {	// 第2层概率退出
+	if l2, err = nnops.Dropout(r2, cnn.D2); err != nil {	// 第2层概率退出
 		return errors.Wrap(err, "Unable to apply a dropout on layer 2")
 	}
 	_ = ioutil.WriteFile("output/tmp.dot", []byte(cnn.G.ToDot()), 0644)
@@ -105,10 +106,10 @@ func (cnn *CNN) Fwd (x *gorgonia.Node) error {
 	if fc, err = gorgonia.Mul(l2, cnn.W3); err != nil {
 		return errors.Wrapf(err, "Unable to multiply l2 and w3")
 	}
-	if a3, err = gorgonia.Rectify(fc); err != nil {	// 第3层激活
+	if a3, err = nnops.Rectify(fc); err != nil {	// 第3层激活
 		return errors.Wrapf(err, "Unable to activate fc")
 	}
-	if l3, err = gorgonia.Dropout(a3, cnn.D3); err != nil {	// 第3层概率退出
+	if l3, err = nnops.Dropout(a3, cnn.D3); err != nil {	// 第3层概率退出
 		return errors.Wrapf(err, "Unable to apply a dropout on layer 3")
 	}
 	// 输出解码
