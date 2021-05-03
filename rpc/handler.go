@@ -56,7 +56,9 @@ func (s *Server) Predict(ctx context.Context, in *pb.PredictRequest) (*pb.Predic
 	if in.NetFlag == common.SnnName {
 		lab, err = nn.SnnPredict(snn, in.Image)
 	} else if in.NetFlag == common.CnnName {
+		cnn.Lock.Lock()
 		lab, err = nn.CnnPredict(cnn, in.Image)
+		cnn.Lock.Unlock()
 	}
 	if err != nil {
 		return &pb.PredictReply{Code: int32(*errorCode), Message: err.Error(), Label: *errorLab}, nil
