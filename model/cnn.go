@@ -9,6 +9,7 @@ import (
 	"log"
 	"os"
 	"suvvm.work/toad_ocr_engine/common"
+	"sync"
 )
 
 // CNN 四层卷积神经网络
@@ -22,6 +23,7 @@ type CNN struct {
 	OutVal gorgonia.Value
 	VM gorgonia.VM
 	TrainEpoch int
+	Lock sync.Mutex
 }
 
 // Fwd 前向传播函数
