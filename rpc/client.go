@@ -3,14 +3,16 @@ package rpc
 import (
 	"context"
 	"flag"
+	cpb "github.com/cheggaaa/pb"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/balancer/roundrobin"
 	"google.golang.org/grpc/resolver"
 	"gorgonia.org/tensor"
+	"gorgonia.org/vecf64"
 	"log"
 	"os"
+	"strconv"
 	"suvvm.work/toad_ocr_engine/common"
-	"suvvm.work/toad_ocr_engine/method"
 	"suvvm.work/toad_ocr_engine/model"
 	pb "suvvm.work/toad_ocr_engine/rpc/idl"
 	"suvvm.work/toad_ocr_engine/utils"
@@ -18,6 +20,7 @@ import (
 )
 
 func RunRpcClient() {
+	var err error
 	flag.Parse()
 	r := NewResolver(*reg, *serv)
 	resolver.Register(r)
@@ -28,8 +31,9 @@ func RunRpcClient() {
 		panic(err)
 	}
 	defer conn.Close()
+	client := pb.NewToadOcrClient(*conn)
 
-	reader, err := os.Open(common.MNISTTestImagesPath)
+	reader, err := os.Open(common.EMNISTByClassTestImagesPath)
 	if err != nil {
 		log.Fatalf("err:%s", err)
 	}
@@ -37,38 +41,51 @@ func RunRpcClient() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	rows := len(testImages)	// 矩阵宽度
-	cols := len(testImages[0])	// 矩阵高度
-	// 创建矩阵的支撑平面切片，tensor会复用当前切片的空间
-	supportSlice := make([]float64, 0, rows * cols)
-	for i := 0; i < rows; i++ {	// 复制缩放后的像素切片进入矩阵平面切片
-		for j := 0; j < len(testImages[i]); j++ {
-			supportSlice = append(supportSlice, utils.PixelWeight(testImages[i][j]))
-		}
-	}
-	var images tensor.Tensor
-	images = tensor.New(tensor.WithShape(rows, cols), tensor.WithBacking(supportSlice))
-	var oneimg tensor.Tensor
-
-	if oneimg, err = images.Slice(model.MakeRS(5, 6)); err != nil {
-		log.Fatalf("Unable to slice image")
-	}
-	log.Printf("row %v", rows)
-	log.Printf("col %v", cols)
-	log.Printf("dims %v", oneimg.Dims())
-	log.Printf("shap %v", oneimg.Shape())
-
-	err = method.Visualize(oneimg, 1, 1, "rpc_image.png")
+	reader, err = os.Open(common.EMNISTByClassTestLabelsPath)
 	if err != nil {
-		log.Printf("client visualize err:%v", err)
+		log.Fatalf("err:%s", err)
 	}
-	client := pb.NewToadOcrClient(*conn)
-	resp, err := client.Predict(context.Background(), &pb.PredictRequest{NetFlag: common.SnnName, Image: oneimg.Data().([]float64)})
-	if err == nil {
-		log.Printf("\nSNN\nMsg is %s\nCode is %d\nLab is %s", resp.Message, resp.Code, resp.Label)
+	testlabels, err := utils.ReadLabelFile(reader)
+	if err != nil {
+		log.Fatalf("err:%v", err)
 	}
-	resp, err = client.Predict(context.Background(), &pb.PredictRequest{NetFlag: common.CnnName, Image: oneimg.Data().([]float64)})
-	if err == nil {
-		log.Printf("\nCNN\nMsg is %s\nCode is %d\nLab is %s", resp.Message, resp.Code, resp.Label)
+	dataImgs := utils.PrepareX(testImages)
+	datalabs := utils.PrepareY(testlabels, common.EMNISTByClassNumLabels)
+
+
+	// shape := dataImgs.Shape()
+	var correct, total float64
+	var image, label tensor.Tensor
+	var errCnt int
+	// bar := pb.New(tmpDataSize)
+	bar := cpb.New(200)
+	bar.SetRefreshRate(time.Second)
+	bar.SetMaxWidth(common.BarMaxWidth)
+	bar.Prefix("Testing")
+	bar.Set(0)
+	bar.Start()
+	// for i := 0; i < tmpDataSize; i++ {
+	for i := 0; i < 200; i++ {
+		if image, err = dataImgs.Slice(model.MakeRS(i, i + 1)); err != nil {
+			log.Fatalf("Unable to slice image %d", i)
+		}
+		if label, err = datalabs.Slice(model.MakeRS(i, i+1)); err != nil {
+			log.Fatalf("Unable to slice label %d", i)
+		}
+		label := vecf64.Argmax(label.Data().([]float64))
+		resp, err := client.Predict(context.Background(), &pb.PredictRequest{NetFlag: common.SnnName, Image: image.Data().([]float64)})
+		if err != nil {
+			log.Printf("error:%v", err)
+		}
+		respInt, _ := strconv.Atoi(resp.Label)
+		if respInt == label {
+			correct++
+		} else {
+			errCnt++
+		}
+		total++
+		bar.Increment()
 	}
+	bar.Finish()
+	log.Printf("Correct/Totals: %v/%v = %1.3f\n", correct, total, correct/total)
 }
