@@ -9,6 +9,7 @@ import (
 	"os"
 	"suvvm.work/toad_ocr_engine/common"
 	"suvvm.work/toad_ocr_engine/utils"
+	"sync"
 )
 
 // SNN 基础神经网络结构
@@ -27,6 +28,7 @@ type SNN struct {
 	B0 float64
 	B1 float64
 	TrainEpoch int
+	Lock sync.Mutex
 }
 
 // Predict 前向传播函数

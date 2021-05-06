@@ -65,7 +65,7 @@ func RunRpcClient() {
 	bar.Set(0)
 	bar.Start()
 	// for i := 0; i < tmpDataSize; i++ {
-	for i := 0; i < 200; i++ {
+	for i := 0; i < 1; i++ {
 		if image, err = dataImgs.Slice(model.MakeRS(i, i + 1)); err != nil {
 			log.Fatalf("Unable to slice image %d", i)
 		}
@@ -73,10 +73,12 @@ func RunRpcClient() {
 			log.Fatalf("Unable to slice label %d", i)
 		}
 		label := vecf64.Argmax(label.Data().([]float64))
-		resp, err := client.Predict(context.Background(), &pb.PredictRequest{NetFlag: common.SnnName, Image: image.Data().([]float64)})
+		resp, err := client.Predict(context.Background(), &pb.PredictRequest{NetFlag: common.SnnName, Image: image.Data().([]byte)})
 		if err != nil {
 			log.Printf("error:%v", err)
 		}
+
+		log.Printf("label:%v", resp.Label)
 		respInt, _ := strconv.Atoi(resp.Label)
 		if respInt == label {
 			correct++
@@ -87,5 +89,5 @@ func RunRpcClient() {
 		bar.Increment()
 	}
 	bar.Finish()
-	log.Printf("Correct/Totals: %v/%v = %1.3f\n", correct, total, correct/total)
+	// log.Printf("Correct/Totals: %v/%v = %1.3f\n", correct, total, correct/total)
 }

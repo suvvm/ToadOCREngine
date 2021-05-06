@@ -2,9 +2,7 @@ module suvvm.work/toad_ocr_engine
 
 go 1.15
 
-replace (
-	google.golang.org/grpc => google.golang.org/grpc v1.26.0
-)
+replace google.golang.org/grpc => google.golang.org/grpc v1.26.0
 
 require (
 	github.com/awalterschulze/gographviz v2.0.3+incompatible // indirect
@@ -21,6 +19,8 @@ require (
 	github.com/google/flatbuffers v1.12.0 // indirect
 	github.com/google/uuid v1.2.0 // indirect
 	github.com/leesper/go_rng v0.0.0-20190531154944-a612b043e353 // indirect
+	github.com/otiai10/gosseract v2.2.1+incompatible
+	github.com/otiai10/mint v1.3.2 // indirect
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.6.1 // indirect
 	go.uber.org/zap v1.16.0 // indirect
