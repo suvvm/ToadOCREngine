@@ -95,12 +95,12 @@ func main() {
 	}
 
 	client := pb.NewToadOcrClient(*conn)
-	resp, err := client.Predict(context.Background(), &pb.PredictRequest{NetFlag: common.SnnName, Image: oneimg.Data().([]float64)})
+	resp, err := client.Predict(context.Background(), &pb.PredictRequest{NetFlag: common.SnnName, Image: oneimg.Data().([]byte)})
 	if err == nil {
 		log.Printf("\nSNN\nMsg is %s\nCode is %d\nLab is %s", resp.Message, resp.Code, resp.Label)
 	}
 
-	resp, err = client.Predict(context.Background(), &pb.PredictRequest{NetFlag: common.CnnName, Image: oneimg.Data().([]float64)})
+	resp, err = client.Predict(context.Background(), &pb.PredictRequest{NetFlag: common.CnnName, Image: oneimg.Data().([]byte)})
 	if err == nil {
 		log.Printf("\nCNN\nMsg is %s\nCode is %d\nLab is %s", resp.Message, resp.Code, resp.Label)
 	}

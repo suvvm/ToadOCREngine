@@ -73,7 +73,7 @@ func RunRpcClient() {
 			log.Fatalf("Unable to slice label %d", i)
 		}
 		label := vecf64.Argmax(label.Data().([]float64))
-		resp, err := client.Predict(context.Background(), &pb.PredictRequest{NetFlag: common.SnnName, Image: image.Data().([]float64)})
+		resp, err := client.Predict(context.Background(), &pb.PredictRequest{NetFlag: common.SnnName, Image: image.Data().([]byte)})
 		if err != nil {
 			log.Printf("error:%v", err)
 		}

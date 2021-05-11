@@ -9,6 +9,7 @@ import (
 	"suvvm.work/toad_ocr_engine/model"
 	"suvvm.work/toad_ocr_engine/nn"
 	pb "suvvm.work/toad_ocr_engine/rpc/idl"
+	"suvvm.work/toad_ocr_engine/utils"
 )
 
 var (
@@ -50,18 +51,27 @@ func (s *Server) SayHello(ctx context.Context, in *pb.HelloRequest) (*pb.HelloRe
 }
 
 func (s *Server) Predict(ctx context.Context, in *pb.PredictRequest) (*pb.PredictReply, error) {
+	imgF64 := bytesToF64(in.Image)
 	log.Printf("Predict %v", in.NetFlag)
 	var lab string
 	var err error
 	if in.NetFlag == common.SnnName {
-		lab, err = nn.SnnPredict(snn, in.Image)
+		lab, err = nn.SnnPredict(snn, imgF64)
 	} else if in.NetFlag == common.CnnName {
 		cnn.Lock.Lock()
-		lab, err = nn.CnnPredict(cnn, in.Image)
+		lab, err = nn.CnnPredict(cnn, imgF64)
 		cnn.Lock.Unlock()
 	}
 	if err != nil {
 		return &pb.PredictReply{Code: int32(*errorCode), Message: err.Error(), Label: *errorLab}, nil
 	}
 	return &pb.PredictReply{Code: int32(*successCode), Message: *successMsg, Label: lab}, nil
+}
+
+func bytesToF64(data []byte) []float64 {
+	dataF64 := make([]float64, 0)
+	for _, b := range data {
+		dataF64 = append(dataF64, utils.PixelWeight(b))
+	}
+	return dataF64
 }
