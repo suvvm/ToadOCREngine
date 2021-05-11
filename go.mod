@@ -25,6 +25,7 @@ require (
 	github.com/stretchr/testify v1.6.1 // indirect
 	go.uber.org/zap v1.16.0 // indirect
 	go4.org/unsafe/assume-no-moving-gc v0.0.0-20201222180813-1025295fd063 // indirect
+	gocv.io/x/gocv v0.27.0
 	gonum.org/v1/gonum v0.9.0
 	gonum.org/v1/netlib v0.0.0-20201012070519-2390d26c3658 // indirect
 	google.golang.org/grpc v1.32.0

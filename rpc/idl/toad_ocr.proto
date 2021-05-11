@@ -41,7 +41,6 @@ message HelloReply {
 message PredictRequest {
   string net_flag = 1;
   bytes image = 2;
-  repeated double imagef = 3;
 }
 
 message PredictReply {

@@ -98,3 +98,32 @@ func Visualize(data tensor.Tensor, rows, cols int, filename string) error {
 func VisualizeWeights(w tensor.Tensor, rows, cols int, filename string) error {
 	return nil
 }
+
+func VisualizeBytes(data []byte, filename string) error {
+	rect := image.Rect(0, 0, common.RawImageRows, common.RawImageCols)	// 构造对应大小的矩形图像
+	canvas := image.NewGray(rect)	// 根据构造的矩形创建灰度图画布
+	// 遍历图像才张量中提取像素灰度值进行填充
+	for k, px := range data {
+		x := k % common.RawImageRows
+		y := k / common.RawImageCols
+		c := color.Gray{PixelNot(px)}
+		canvas.Set(x, y, c)
+	}
+	// 构造png图像文件
+	var err error
+	var file io.WriteCloser
+	if file, err = os.Create("output/images/"+filename); err != nil {
+		return err
+	}
+	if err = png.Encode(file, canvas); err != nil {
+		return err
+	}
+	if err = file.Close(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func PixelNot(px byte) byte {
+	return 255 - px
+}

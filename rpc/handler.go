@@ -1,20 +1,18 @@
 package rpc
 
 import (
-	"bytes"
 	"context"
 	"flag"
 	"github.com/otiai10/gosseract"
 	"gorgonia.org/gorgonia"
-	"image"
-	"image/jpeg"
 	"log"
-	"os"
 	"strconv"
 	"suvvm.work/toad_ocr_engine/common"
+	"suvvm.work/toad_ocr_engine/method"
 	"suvvm.work/toad_ocr_engine/model"
 	"suvvm.work/toad_ocr_engine/nn"
 	pb "suvvm.work/toad_ocr_engine/rpc/idl"
+	"suvvm.work/toad_ocr_engine/utils"
 )
 
 var (
@@ -46,6 +44,7 @@ func initNN() {
 	// lab, err = nn.SnnPredict(snn, in.Image)
 	clientTs = gosseract.NewClient()
 	// client.SetImageFromBytes(float64SliceAsByteSlice(in.Image))
+	//clientTs.SetLanguage("eng", "chi_sim")
 	clientTs.SetPageSegMode(gosseract.PSM_SINGLE_CHAR)
 	clientTs.SetVariable(gosseract.TESSEDIT_CHAR_WHITELIST,
 		"0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
@@ -63,18 +62,19 @@ func (s *Server) SayHello(ctx context.Context, in *pb.HelloRequest) (*pb.HelloRe
 }
 
 func (s *Server) Predict(ctx context.Context, in *pb.PredictRequest) (*pb.PredictReply, error) {
+	imgF64 := bytesToF64(in.Image)
 	log.Printf("Predict %v", in.NetFlag)
 	var lab string
 	var err error
 	if in.NetFlag == common.CnnName {
 		cnn.Lock.Lock()
-		lab, err = nn.CnnPredict(cnn, in.Imagef)
+		lab, err = nn.CnnPredict(cnn, imgF64)
 		cnn.Lock.Unlock()
 	} else {
 		snn.Lock.Lock()
-		val, ok := predictByTs(in)
+		val, ok := predictByTs(in.Image)
 		if !ok {
-			lab, err = nn.SnnPredict(snn ,in.Imagef)
+			lab, err = nn.SnnPredict(snn, imgF64)
 		} else {
 			lab = strconv.Itoa(val)
 		}
@@ -86,30 +86,53 @@ func (s *Server) Predict(ctx context.Context, in *pb.PredictRequest) (*pb.Predic
 	return &pb.PredictReply{Code: int32(*successCode), Message: *successMsg, Label: lab}, nil
 }
 
-func predictByTs(in *pb.PredictRequest) (int, bool) {
+func predictByTs(imageData []byte) (int, bool) {
 	// defer client.Close()
-	img, _, _ := image.Decode(bytes.NewReader(in.Image))
-	out, err := os.Create("output/images/tmp.jpg")
+	//tmp := gocv.NewMat()
+	//imageMat, err := gocv.NewMatFromBytes(28,28, 1, imageData)
+	//if err != nil {
+	//	log.Printf("NewMatFromBytes err:%v", err)
+	//	return -1, false
+	//}
+	////gocv.BitwiseNot(imageMat, &imageMat)
+	//gocv.IMWrite("output/images/tmp.png", imageMat)
+	err := method.VisualizeBytes(imageData, "tmp.png")
 	if err != nil {
-		log.Fatal(err)
+		log.Printf("VisualizeBytesc err:%v", err)
+		return -1, false
 	}
-	defer out.Close()
-	jpeg.Encode(out, img, nil)
-	err = clientTs.SetImage("output/images/tmp.jpg")
+	//err = clientTs.SetImageFromBytes(imageMat.ToBytes())
+	err = clientTs.SetImage("output/images/tmp.png")
 	if err != nil {
-		log.Printf("set err:%v", err)
+		log.Printf("SetImageFromBytes err:%v", err)
+		return -1, false
 	}
+	// err = clientTs.SetImage("output/images/tmp.png")
+	//if err != nil {
+	//	log.Printf("set err:%v", err)
+	//}
 	text, err := clientTs.Text()
 	if err != nil {
 		log.Printf("Text err:%v", err)
+		return -1, false
 	}
 	log.Printf("text:%v", text)
 	if len(text) > 0 {
 		val, ok := common.CharMap[text[0]]
 		if !ok {
+			log.Printf("clientTs resp not in map")
 			return -1, false
 		}
 		return val, true
 	}
+	log.Printf("text <= 0")
 	return -1, false
+}
+
+func bytesToF64(data []byte) []float64 {
+	dataF64 := make([]float64, 0)
+	for _, b := range data {
+	   dataF64 = append(dataF64, utils.PixelWeight(b))
+	}
+	return dataF64
 }
