@@ -16,7 +16,7 @@ var (
 	serv = flag.String("service", "toad_ocr_service", "service name")
 	host = flag.String("host", "localhost", "listening host")
 	port = flag.String("port", "18886", "listening port")
-	reg  = flag.String("reg", "http://www.suvvm.work:2379", "register etcd address")
+	reg  = flag.String("reg", "http://localhost:2379", "register etcd address")
 )
 
 func RunRPCServer() {
