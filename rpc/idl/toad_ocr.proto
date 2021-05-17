@@ -30,7 +30,9 @@ service ToadOcr {
 
 // The request message containing the user's name.
 message HelloRequest {
-  string name = 1;
+  string app_id = 1;
+  string basic_token = 2;
+  string name = 3;
 }
 
 // The response message containing the greetings
@@ -39,8 +41,10 @@ message HelloReply {
 }
 
 message PredictRequest {
-  string net_flag = 1;
-  bytes image = 2;
+  string app_id = 1;
+  string basic_token = 2;
+  string net_flag = 3;
+  bytes image = 4;
 }
 
 message PredictReply {

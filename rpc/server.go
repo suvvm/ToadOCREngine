@@ -2,25 +2,47 @@ package rpc
 
 import (
 	"flag"
+	"fmt"
 	"google.golang.org/grpc"
 	"log"
 	"net"
 	"os"
 	"os/signal"
+	"path/filepath"
+	"suvvm.work/toad_ocr_engine/config"
+	"suvvm.work/toad_ocr_engine/dal/db"
 	pb "suvvm.work/toad_ocr_engine/rpc/idl"
 	"syscall"
 	"time"
 )
 
 var (
+	dbConfig = "./conf/db_config.yaml"
 	serv = flag.String("service", "toad_ocr_service", "service name")
 	host = flag.String("host", "localhost", "listening host")
 	port = flag.String("port", "18886", "listening port")
 	reg  = flag.String("reg", "http://localhost:2379", "register etcd address")
 )
 
+// InitConfig 初始化配置信息
+func InitConfig() {
+	str, err := os.Getwd() // 获取相对路径
+	if err != nil {
+		panic(fmt.Sprintf("filepath failed, err=%v", err))
+	}
+	dbFileName, err := filepath.Abs(filepath.Join(str, dbConfig)) // 获取db配置文件路径
+	if err != nil {
+		panic(fmt.Sprintf("filepath failed, err=%v", err))
+	}
+	conf := config.Init(dbFileName)                    // 读取db配置文件
+	if err = db.InitDB(&conf.DBConfig); err != nil { // 初始化db链接
+		panic(fmt.Sprintf("init db conn err=%v", err))
+	}
+}
+
 func RunRPCServer() {
 	initNN()
+	InitConfig()
 	log.Printf("service listen port:%v", port)
 	lis, err := net.Listen("tcp", ":" + *port)
 	if err != nil {

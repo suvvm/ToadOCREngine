@@ -57,15 +57,24 @@ type Server struct {
 
 // SayHello implements helloworld.GreeterServer
 func (s *Server) SayHello(ctx context.Context, in *pb.HelloRequest) (*pb.HelloReply, error) {
+	err := method.VerifySecret(ctx, in.AppId, in.BasicToken, in.Name)
+	if err != nil {
+		return &pb.HelloReply{Message: "Hello " + in.GetName()}, nil
+	}
 	log.Printf("Received: %v", in.GetName())
-	return &pb.HelloReply{Message: "Hello " + in.GetName()}, nil
+	return &pb.HelloReply{Message: "permission denied"}, nil
 }
 
 func (s *Server) Predict(ctx context.Context, in *pb.PredictRequest) (*pb.PredictReply, error) {
+	log.Printf("app:%v Received Process from", in.AppId)
+	err := method.VerifySecret(ctx, in.AppId, in.BasicToken, in.NetFlag + utils.PixelHashStr(in.Image))
+	if err != nil {
+		log.Printf("app:%v permission denied", in.AppId)
+		return &pb.PredictReply{Code: int32(*errorCode), Message: "permission denied", Label: *errorLab}, nil
+	}
 	imgF64 := bytesToF64(in.Image)
 	log.Printf("Predict %v", in.NetFlag)
 	var lab string
-	var err error
 	if in.NetFlag == common.CnnName {
 		cnn.Lock.Lock()
 		lab, err = nn.CnnPredict(cnn, imgF64)

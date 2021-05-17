@@ -1,0 +1,5 @@
+SdkConf:
+  AppID: ""
+  AppSecret: ""
+  Email: ""
+  SmtpPsw: ""
