@@ -1,0 +1,13 @@
+DbConf:
+  DSNTemplate: "%s:%s@tcp(%s:%s)/%s?timeout=%s&readTimeout=%s&writeTimeout=%s&parseTime=True&interpolateParams=True&loc=Local&autocommit=true"
+  Username: ""
+  Password: ""
+  DBName: ""
+  Hostname: ""
+  Port: ""
+  ConsulName: ""
+  Timeout: "5500ms"
+  ReadTimeout: "10s"
+  WriteTimeout: "10s"
+  MaxIdle: 100
+  MaxOpen: 1000

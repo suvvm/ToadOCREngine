@@ -6,6 +6,7 @@ import (
 	"gorgonia.org/gorgonia"
 	"log"
 	"suvvm.work/toad_ocr_engine/common"
+	"suvvm.work/toad_ocr_engine/method"
 	"suvvm.work/toad_ocr_engine/model"
 	"suvvm.work/toad_ocr_engine/nn"
 	pb "suvvm.work/toad_ocr_engine/rpc/idl"
@@ -51,10 +52,15 @@ func (s *Server) SayHello(ctx context.Context, in *pb.HelloRequest) (*pb.HelloRe
 }
 
 func (s *Server) Predict(ctx context.Context, in *pb.PredictRequest) (*pb.PredictReply, error) {
+	log.Printf("app:%v Received Process from", in.AppId)
+	err := method.VerifySecret(ctx, in.AppId, in.BasicToken, in.NetFlag + utils.PixelHashStr(in.Image))
+	if err != nil {
+		log.Printf("app:%v permission denied", in.AppId)
+		return &pb.PredictReply{Code: int32(*errorCode), Message: "permission denied", Label: *errorLab}, nil
+	}
 	imgF64 := bytesToF64(in.Image)
 	log.Printf("Predict %v", in.NetFlag)
 	var lab string
-	var err error
 	if in.NetFlag == common.SnnName {
 		lab, err = nn.SnnPredict(snn, imgF64)
 	} else if in.NetFlag == common.CnnName {

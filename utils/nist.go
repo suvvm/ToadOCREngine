@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"strconv"
 	"suvvm.work/toad_ocr_engine/common"
 )
 
@@ -173,6 +174,15 @@ func PixelWeight(px byte) float64 {
 		return 0.999
 	}
 	return pixelVal
+}
+
+func PixelHashStr(pxs []byte) string {
+	var resp string
+	for i := 0; i < len(pxs); i++ {
+		pixelVal := int(pxs[i])
+		resp += strconv.Itoa(pixelVal)
+	}
+	return resp
 }
 
 // LoadNIST 读取MNIST文件为张量

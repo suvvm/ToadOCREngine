@@ -2,9 +2,7 @@ module suvvm.work/toad_ocr_engine
 
 go 1.15
 
-replace (
-	google.golang.org/grpc => google.golang.org/grpc v1.26.0
-)
+replace google.golang.org/grpc => google.golang.org/grpc v1.26.0
 
 require (
 	github.com/awalterschulze/gographviz v2.0.3+incompatible // indirect
@@ -30,7 +28,10 @@ require (
 	google.golang.org/grpc v1.32.0
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v0.0.0-20200910201057-6591123024b3 // indirect
 	google.golang.org/protobuf v1.26.0
+	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gorgonia.org/gorgonia v0.9.17
 	gorgonia.org/tensor v0.9.19
 	gorgonia.org/vecf64 v0.9.0
+	gorm.io/driver/mysql v1.1.0 // indirect
+	gorm.io/gorm v1.21.10 // indirect
 )
