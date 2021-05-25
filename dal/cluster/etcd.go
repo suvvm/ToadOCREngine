@@ -37,6 +37,9 @@ func GetKV(ctx context.Context, key string) (string, error) {
 	//for _, ev := range resp.Kvs {
 	//	fmt.Printf("%s : %s\n", ev.Key, ev.Value)
 	//}
+	if string(resp.Kvs[0].Value) == "" 	{
+		return "", fmt.Errorf("resp kvs is empty")
+	}
 	return string(resp.Kvs[0].Value), nil
 }
 
